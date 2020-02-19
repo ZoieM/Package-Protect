@@ -49,7 +49,7 @@
  * @brief The maximum time interval in seconds allowed to elapse between 2 consecutive
  * control packets.
  */
-#define mqttconfigKEEP_ALIVE_INTERVAL_SECONDS         ( 1200 )
+#define mqttconfigKEEP_ALIVE_INTERVAL_SECONDS         ( 60000 )
 
 /**
  * @brief Defines the frequency at which the client should send Keep Alive messages.
@@ -61,7 +61,7 @@
  * This macro defines the interval of inactivity after which a keep alive messages
  * is sent.
  */
-#define mqttconfigKEEP_ALIVE_ACTUAL_INTERVAL_TICKS    ( pdMS_TO_TICKS( 300000 ) )
+#define mqttconfigKEEP_ALIVE_ACTUAL_INTERVAL_TICKS    ( pdMS_TO_TICKS( 8000 ) )
 
 /**
  * @brief The maximum interval in ticks to wait for PINGRESP.

@@ -69,23 +69,14 @@
 
 /* MQTT includes. */
 #include "aws_mqtt_agent.h"
-
+#include "aws_wifi.h"
 /* Credentials includes. */
 #include "aws_clientcredential.h"
 
 /* Demo includes. */
 #include "aws_demo_config.h"
 #include "aws_hello_world.h"
-#include "queue.h"
-#include "semphr.h"
 
-SemaphoreHandle_t xBoxOpenSem;
-SemaphoreHandle_t xReadSwitchsSem;
-SemaphoreHandle_t xKeypadSem;
-SemaphoreHandle_t xGreenLed;
-SemaphoreHandle_t xRedLed;
-SemaphoreHandle_t xMessageSend;
-volatile bool messageFlag;
 /**
  * @brief MQTT client ID.
  *
@@ -96,7 +87,7 @@ volatile bool messageFlag;
 /**
  * @brief The topic that the MQTT client both subscribes and publishes to.
  */
-#define echoTOPIC_NAME           ( ( const uint8_t * ) "mailbox/message" )
+#define echoTOPIC_NAME           ( ( const uint8_t * ) "freertos/demos/echo" )
 
 /**
  * @brief The string appended to messages that are echoed back to the MQTT broker.
@@ -115,7 +106,7 @@ volatile bool messageFlag;
  * @brief Dimension of the character array buffers used to hold data (strings in
  * this case) that is published to and received from the MQTT broker (in the cloud).
  */
-#define echoMAX_DATA_LENGTH      50
+#define echoMAX_DATA_LENGTH      20
 
 /**
  * @brief A block time of 0 simply means "don't block".
@@ -186,20 +177,39 @@ static MessageBufferHandle_t xEchoMessageBuffer = NULL;
  * @ brief The handle of the MQTT client object used by the MQTT echo demo.
  */
 static MQTTAgentHandle_t xMQTTHandle = NULL;
+#define TEMP_TASK_STACK_SIZE                ( configMINIMAL_STACK_SIZE * 7 )
+#define TEMP_TASK_PRIORITY                  ( tskIDLE_PRIORITY )
+
 
 /*-----------------------------------------------------------*/
+static void prvMacForHumans(uint8_t * humanAddress);
+static void prvTempSensorReaderTask( void * pvParameters );
+static uint8_t thing_mac_address[ ( wificonfigMAX_BSSID_LEN * 2 ) + 1 ];
+static I2C_Handle xI2C;
+
+typedef struct Temperature_Reading
+ {
+     float           reading;
+ } xTemperatureReading;
+
+ typedef struct MQTT_Task_Parameter
+ {
+     char * thingName;
+     char   topic[128];
+ } xMQTTTaskParameter;
 
 static BaseType_t prvCreateClientAndConnectToBroker( void )
 {
     MQTTAgentReturnCode_t xReturned;
     BaseType_t xReturn = pdFAIL;
+    configPRINTF( ( "My Client ID is [%s]\r\n", thing_mac_address ) );
     MQTTAgentConnectParams_t xConnectParameters =
     {
         clientcredentialMQTT_BROKER_ENDPOINT, /* The URL of the MQTT broker to connect to. */
         democonfigMQTT_AGENT_CONNECT_FLAGS,   /* Connection flags. */
         pdFALSE,                              /* Deprecated. */
         clientcredentialMQTT_BROKER_PORT,     /* Port number on which the MQTT broker is listening. Can be overridden by ALPN connection flag. */
-        echoCLIENT_ID,                        /* Client Identifier of the MQTT client. It should be unique per broker. */
+        thing_mac_address,                        /* Client Identifier of the MQTT client. It should be unique per broker. */
         0,                                    /* The length of the client Id, filled in later as not const. */
         pdFALSE,                              /* Deprecated. */
         NULL,                                 /* User data supplied to the callback. Can be NULL. */
@@ -259,13 +269,7 @@ static void prvPublishNextMessage( BaseType_t xMessageNumber )
     /* Create the message that will be published, which is of the form "Hello World n"
      * where n is a monotonically increasing number. Note that snprintf appends
      * terminating null character to the cDataBuffer. */
-    if(messageFlag) {
-        ( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "Your package has been delivered and it is secure!" );
-    }
-    else {
-        ( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "Your package has been delivered, but is insecure!" );
-    }
-
+    ( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "Hello World %d", ( int ) xMessageNumber );
 
     /* Setup the publish parameters. */
     memset( &( xPublishParameters ), 0x00, sizeof( xPublishParameters ) );
@@ -459,8 +463,7 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
     /* Avoid compiler warnings about unused parameters. */
     ( void ) pvParameters;
 
-    /* Create the MQTT client object and connect it to the MQTT broker. */
-    xReturned = prvCreateClientAndConnectToBroker();
+
 
     if( xReturned == pdPASS )
     {
@@ -497,21 +500,13 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
     {
         /* MQTT client is now connected to a broker.  Publish a message
          * every five seconds until a minute has elapsed. */
+        for( xX = 0; xX < xIterationsInAMinute; xX++ )
+        {
+            prvPublishNextMessage( xX );
 
-        /* Place Logic for mailbox here */
-//        for( xX = 0; xX < xIterationsInAMinute; xX++ )
-//        {
-        while(1) {
-            configPRINTF( ( "Messages are Blocked\r\n" ) );
-            xSemaphoreTake(xMessageSend, portMAX_DELAY);
-            configPRINTF( ( "Messages are unblocked\r\n" ) );
-            prvPublishNextMessage( messageFlag );
+            /* Five seconds delay between publishes. */
+            vTaskDelay( xFiveSeconds );
         }
-
-//
-//            /* Five seconds delay between publishes. */
-//            vTaskDelay( xFiveSeconds );
-//        }
     }
 
     /* Disconnect the client. */
@@ -525,275 +520,18 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
     vTaskDelete( NULL ); /* Delete this task. */
 }
 /*-----------------------------------------------------------*/
-inline uint8_t keyPoll () {
-    uint8_t i;
-    for(i = 0; i < 4; i++) {
-        configPRINTF( ( "Keypad Poll Entered\r\n" ) );
-        if(i == 0) {
-            configPRINTF( ( "i = 0\r\n" ) );
-            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW1, 1);
-            vTaskDelay(pdMS_TO_TICKS( 1UL ));
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL1)) {
-                configPRINTF( ( "Should be 1\r\n" ) );
-                return 1;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL2)) {
-                return 2;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL3)) {
-                return 3;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL4)) {
-                return 10;
-            }
-        }
-        if(i == 1) {
-            configPRINTF( ( "i = 1\r\n" ) );
-            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW2, 1);
-            vTaskDelay(pdMS_TO_TICKS( 1UL ));
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL1)) {
-                configPRINTF( ( "Should be 4\r\n" ) );
-                return 4;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL2)) {
-                return 5;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL3)) {
-                return 6;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL4)) {
-                return 11;
-            }
-        }
-        if(i == 2) {
-            configPRINTF( ( "i = 2\r\n" ) );
-            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW3, 1);
-            vTaskDelay(pdMS_TO_TICKS( 1UL ));
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL1)) {
-                return 7;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL2)) {
-                return 8;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL3)) {
-                return 9;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL4)) {
-                return 12;
-            }
-        }
-        if(i == 3) {
-            configPRINTF( ( "i = 3\r\n" ) );
-            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW4, 1);
-            vTaskDelay(pdMS_TO_TICKS( 1UL ));
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL1)) {
-                return 14;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL2)) {
-                return 0;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL3)) {
-                return 15;
-            }
-            if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_COL4)) {
-                return 13;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS( 3000UL ));
-    }
-    return -1;
-}
-
-void vBumperSwitches (uint_least8_t index) {
-    configPRINTF( ( "Bumper pressed\r\n" ) );
-    xSemaphoreGive(xReadSwitchsSem);
-}
-
-void vKeypadPressed (uint_least8_t index) {
-    configPRINTF( ( "Keypad pressed\r\n" ) );
-    xSemaphoreGive(xKeypadSem);
-}
-
-void vOpenBox ( void * pvParameters ) {
-    while (1) {
-        configPRINTF( ( "OpenBox is Blocked\r\n" ) );
-        xSemaphoreTake(xBoxOpenSem, portMAX_DELAY);
-        configPRINTF( ( "OpenBox is unblocked\r\n" ) );
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_LOCK, 1);
-        vTaskDelay(pdMS_TO_TICKS( 200UL ));
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_LOCK, 0);
-    }
-}
-
-void vGreenTurnOn ( void * pvParameters ) {
-    while(1) {
-        configPRINTF( ( "GreenTurnOn is Blocked\r\n" ) );
-        xSemaphoreTake(xGreenLed, portMAX_DELAY);
-        configPRINTF( ( "GreenTurnOna is unblocked\r\n" ) );
-//        xSemaphoreGive(xBoxOpenSem);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_GREEN_LED, 1);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_RED_LED, 1);
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        while(GPIO_read(CC3220SF_LAUNCHXL_GPIO_LID)) {
-            vTaskDelay(pdMS_TO_TICKS( 100UL ));
-        }
-
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_GREEN_LED, 0);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_RED_LED, 0);
-    }
-}
-
-void vRedTurnOn ( void * pvParameters ) {
-    while(1) {
-        configPRINTF( ( "RedTurnOn is Blocked\r\n" ) );
-        xSemaphoreTake(xRedLed, portMAX_DELAY);
-        configPRINTF( ( "RedTurnOn is unblocked\r\n" ) );
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_RED_LED, 1);
-        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_RED_LED, 0);
-    }
-}
-
-void vKeypadCheck ( void * pvParameters )
-{
-//    uint8_t attemptArray[4];
-//    uint8_t count = 0;
-//    uint8_t actualKey[4] = { 1, 5, 9, 0 };
-//    uint8_t keyValue;
-//    bool ledFlag = 1;
-
-    GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW1, 1);
-    GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW2, 1);
-    GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW3, 1);
-    GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW4, 1);
-
-    while (1) {
-        //ledFlag = 1;
-        //configPRINTF( ( "KeypadCheck is Blocked\r\n" ) );
-        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_KEYPAD_PRESSED)) {
-
-
-              xSemaphoreGive(xBoxOpenSem);
-              xSemaphoreGive(xGreenLed);
-//            configPRINTF( ( "KeypadCheck is unblocked\r\n" ) );
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW1, 0);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW2, 0);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW3, 0);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW4, 0);
-//            //vTaskDelay(pdMS_TO_TICKS( 3000UL ));
-//
-//            keyValue = keyPoll();
-//            configPRINTF( ( "%d is Key Value\r\n", keyValue) );
-//
-//            switch (keyValue) {
-//            case 12:
-//                count = 0;
-//                memset(attemptArray, 0, 8 * sizeof(attemptArray));
-//                break;
-//            default:
-//                attemptArray[count] = keyValue;
-//                configPRINTF( ( "%d was put into array\r\n", attemptArray[count]) );
-//                count++;
-//                break;
-//            }
-//
-//
-//
-//            if(count == 4) {
-//                count = 0;
-//                uint8_t j;
-//                for(j = 0; j < 4 ; j++) {
-//                    if(attemptArray[j] != actualKey[j]) {
-//                        ledFlag = 0;
-//                    }
-//                }
-//
-//                if(ledFlag) {
-//                    //xSemaphoreGive(xGreenLed);
-//                    configPRINTF( ( "You totally got the code correct\r\n") );
-//                } else {
-//                    //xSemaphoreGive(xRedLed);
-//                    configPRINTF( ( "You can't haxor me!\r\n") );
-//                }
-//
-//                memset(attemptArray, 0, 8 * sizeof(attemptArray));
-//            }
-//
-//            while(GPIO_read(CC3220SF_LAUNCHXL_GPIO_KEYPAD_PRESSED));
-//
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW1, 1);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW2, 1);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW3, 1);
-//            GPIO_write(CC3220SF_LAUNCHXL_GPIO_ROW4, 1);
-
-
-
-        }
-        vTaskDelay(pdMS_TO_TICKS( 10UL ));
-    }
-
-}
-
-void vReadSwitches ( void * pvParameters )
-{
-    while(1) {
-        //configPRINTF( ( "ReadSwitches is Blocked\r\n" ) );
-        //xSemaphoreTake(xReadSwitchsSem, portMAX_DELAY);
-        //configPRINTF( ( "ReadSwitches is unblocked\r\n" ) );
-
-        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_PRESSURE)) {
-            configPRINTF( ( "ReadSwitches is triggered\r\n" ) );
-            vTaskDelay(pdMS_TO_TICKS( 5000UL ));
-            if (GPIO_read(CC3220SF_LAUNCHXL_GPIO_LID)) {
-                //MQTT Call with insecure
-                configPRINTF( ( "Should be insecure\r\n" ) );
-                messageFlag = 0;
-
-            } else {
-                //MQTT Call with secure
-                configPRINTF( ( "Should be secure\r\n" ) );
-                messageFlag = 1;
-            }
-
-            xSemaphoreGive(xMessageSend);
-            while(GPIO_read(CC3220SF_LAUNCHXL_GPIO_PRESSURE)) {
-                vTaskDelay( pdMS_TO_TICKS( 100UL ) );
-            }
-        //configPRINTF(("Button: %d", GPIO_read(CC3220SF_LAUNCHXL_GPIO_SW3)));
-//        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        }
-        vTaskDelay( pdMS_TO_TICKS( 50UL ) );
-    }
-}
-
-//void vTestingTask ( void * pvParameters ) {
-//    configPRINTF( ("Started test task\r\n") );
-//    while(1) {
-//
-//        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_LOCK)) {
-//            configPRINTF( ("HIGH\n") );
-//        } else {
-//            configPRINTF( ("LOW\n") );
-//        }
-//        vTaskDelay(1000);
-//    }
-//}
 
 void vStartMQTTEchoDemo( void )
 {
-    xBoxOpenSem = xSemaphoreCreateBinary();
-    xReadSwitchsSem = xSemaphoreCreateBinary();
-    xKeypadSem = xSemaphoreCreateBinary();
-    xGreenLed = xSemaphoreCreateBinary();
-    xRedLed = xSemaphoreCreateBinary();
-    xMessageSend = xSemaphoreCreateBinary();
+    configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
 
-    GPIO_init();
-//    configPRINTF( ( "Creating interrupts\r\n" ) );
-//    GPIO_setCallback(CC3220SF_LAUNCHXL_GPIO_SW3, vBumperSwitches);
-//    GPIO_enableInt(CC3220SF_LAUNCHXL_GPIO_PRESSURE);
-//    GPIO_setCallback(CC3220SF_LAUNCHXL_GPIO_KEYPAD_PRESSED, vKeypadPressed);
-//    GPIO_enableInt(CC3220SF_LAUNCHXL_GPIO_KEYPAD_PRESSED);
+    BaseType_t xReturned;
+    I2C_init();
+    xMQTTTaskParameter taskParameter_temperature;
+    prvMacForHumans(thing_mac_address);
+
+    /* Create the MQTT client object and connect it to the MQTT broker. */
+    xReturned = prvCreateClientAndConnectToBroker();
 
 
     /* Create the message buffer used to pass strings from the MQTT callback
@@ -804,20 +542,130 @@ void vStartMQTTEchoDemo( void )
     xEchoMessageBuffer = xMessageBufferCreate( ( size_t ) echoMAX_DATA_LENGTH + sizeof( size_t ) );
     configASSERT( xEchoMessageBuffer );
 
-    configPRINTF( ( "Starting Tasks\r\n" ) );
-    xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL);
-    xTaskCreate(vReadSwitches, "Read Switches", 512, NULL, 2, NULL);
-    xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL);
-    xTaskCreate(vGreenTurnOn, "GLED", 512, NULL, 2, NULL);
-//    xTaskCreate(vRedTurnOn, "RLED", 512, NULL, 2, NULL);
-//    xTaskCreate(vTestingTask, "Test", 512, NULL, 2, NULL);
+    if ( xReturned == pdPASS )
+         {
+             memset( taskParameter_temperature.topic, 0x00, sizeof( taskParameter_temperature.topic ) );
+             snprintf( taskParameter_temperature.topic, sizeof( taskParameter_temperature.topic ), "temperature/%s", thing_mac_address );
 
-    /* Create the task that publishes messages to the MQTT broker
-    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
-                          "MQTTEcho",                          /* The name to assign to the task being created. */
-                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
-                          NULL,                                /* The task parameter is not being used. */
-                          2,   /* The priority at which the task being created will run. */
-                          NULL );                              /* Not storing the task's handle. */
+             xReturned = xTaskCreate( prvTempSensorReaderTask,
+                                      "TMP006",
+                                      TEMP_TASK_STACK_SIZE,
+                                      ( void * ) &taskParameter_temperature,
+                                      TEMP_TASK_PRIORITY,
+                                      NULL );
+         }
+
+    /* Create the task that publishes messages to the MQTT broker every five
+     * seconds.  This task, in turn, creates the task that echoes data received
+     * from the broker back to the broker. */
+
 }
+
+static void prvMacForHumans(uint8_t * humanAddress)
+ {
+     uint8_t buf[ wificonfigMAX_BSSID_LEN ];
+     char cbuf[2];
+     uint8_t idx = 0;
+
+     WIFI_GetMAC( ( uint8_t * )  buf);
+
+     // get the mac address in a string
+     for (idx = 0; idx < wificonfigMAX_BSSID_LEN; idx++)
+     {
+         sprintf(cbuf, "%x", buf[idx]);
+         if ( cbuf[1] == '\0')
+         {
+             humanAddress[( idx * 2 )] = '0';
+             humanAddress[( idx * 2 ) + 1] = cbuf[0];
+
+         }
+         else
+         {
+             humanAddress[( idx * 2 )] = cbuf[0];
+             humanAddress[( idx * 2 ) + 1] = cbuf[1];
+         }
+     }
+
+     humanAddress[ ( wificonfigMAX_BSSID_LEN * 2 ) ] = '\0';
+ }
+
+#define Board_TMP_ADDR                  ( 0x41 )
+#define TEMPERATURE_TASK_READ_DELAY_MS  10000
+#define TEMPERATURE_TASK_SENSOR_ADDRESS Board_TMP_ADDR
+#define TEMPERATURE_TASK_TMP_REGISTER   0x0001
+
+static void prvTempSensorReaderTask( void * pvParameters )
+{
+     uint8_t         txBuf[1];       // Register to read
+     uint8_t         rxBuf[2];       // Data received
+     I2C_Transaction i2cTxn;
+
+     char cDataBuffer[ 68 ];
+     xMQTTTaskParameter *pxParameters;
+     pxParameters = ( xMQTTTaskParameter * ) pvParameters;
+
+     float           temperatureC;
+     float           temperatureF;
+     float           prevTemp = 0;
+
+     /*
+      *  Create/Open the I2C bus that talks to the TMP sensor
+      */
+     I2C_Params      i2cParams;
+     I2C_Params_init(&i2cParams);
+     i2cParams.bitRate = I2C_400kHz;
+
+     if ( xI2C == NULL )
+       xI2C = I2C_open( Board_I2C_TMP,  // Defined in Board.h
+                        &i2cParams );
+     vTaskDelay( pdMS_TO_TICKS( 7 ) ); // ensure configuration mode completes, 7ms, super magic number
+
+     if ( xI2C == NULL ) {
+       configPRINTF(("CRITICAL: Could not open I2C bus. Reset the board.\r\n"));
+       while (1);
+     }
+
+     txBuf[0] = TEMPERATURE_TASK_TMP_REGISTER;
+
+     i2cTxn.slaveAddress = TEMPERATURE_TASK_SENSOR_ADDRESS;
+     i2cTxn.writeBuf     = txBuf;
+     i2cTxn.writeCount   = 1;
+     i2cTxn.readBuf      = rxBuf;
+     i2cTxn.readCount    = 2;
+
+     while (1) {
+         vTaskDelay( pdMS_TO_TICKS( TEMPERATURE_TASK_READ_DELAY_MS ) );
+         if ( xMQTTHandle == NULL ) continue;
+         /* Do not hold the semaphore for longer than needed. */
+         if ( I2C_transfer(xI2C, &i2cTxn) ) {
+             temperatureC = (rxBuf[0] << 6) | (rxBuf[1] >> 2);
+         }
+         temperatureC *= 0.03125; // FIXME: Should be reading reference voltage off sensor
+         temperatureF = ( ( temperatureC * 9 ) / 5 ) + 32;
+
+         configPRINTF(("Celsius: %f, Fahrenheit: %f\r\n", temperatureC, temperatureF));
+
+         snprintf(cDataBuffer, sizeof( cDataBuffer), "{\"temperature\":%f, \"d\":\"%s\", \"PrevTemp\":%f}",
+                  temperatureF, thing_mac_address, prevTemp);
+         MQTTAgentPublishParams_t pxPublishParams;
+         pxPublishParams.pucTopic = ( uint8_t * ) pxParameters->topic;
+         pxPublishParams.usTopicLength = ( uint16_t )  strlen(( const char * )pxParameters->topic);
+         pxPublishParams.pvData = cDataBuffer;
+         pxPublishParams.ulDataLength = ( uint32_t )  strlen(( const char * )cDataBuffer);
+         pxPublishParams.xQoS =  eMQTTQoS1;
+
+         if ( MQTT_AGENT_Publish(xMQTTHandle, &( pxPublishParams ),
+                 democonfigMQTT_TIMEOUT) == eMQTTSuccess )
+         {
+             configPRINTF(("Outbound sent successfully.\r\n"));
+         }
+         else
+         {
+             configPRINTF(("Outbound NOT sent successfully.\r\n"));
+         }
+
+         prevTemp = temperatureF;
+
+     }
+ }
 /*-----------------------------------------------------------*/

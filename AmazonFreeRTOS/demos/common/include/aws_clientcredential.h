@@ -35,12 +35,12 @@
 /*
  * MQTT Broker endpoint.
  */
-static const char clientcredentialMQTT_BROKER_ENDPOINT[] = "a134zra8gtikvt-ats.iot.us-east-1.amazonaws.com";
+static const char clientcredentialMQTT_BROKER_ENDPOINT[] = "a27oqtzq3gseqx-ats.iot.us-west-2.amazonaws.com";
 
 
 /* Use of a "define" and not a "static const" here to be able to
 * use pre-compile concatenation on the string. */
-#define clientcredentialIOT_THING_NAME "FreeRTOS-TICC3220SF"
+#define clientcredentialIOT_THING_NAME "Package_Protect"
 
 /*
  * Port number the MQTT broker is using.
@@ -55,12 +55,14 @@ static const char clientcredentialMQTT_BROKER_ENDPOINT[] = "a134zra8gtikvt-ats.i
 /*
  * Wi-Fi network to join.
  */
-#define clientcredentialWIFI_SSID      "SJSU_MyDevice"// "ASUS2.4"//"Default"
+//#define clientcredentialWIFI_SSID       "palmfamily"
+#define clientcredentialWIFI_SSID       "SJSU_MyDevice"
 
 /*
  * Password needed to join Wi-Fi network.
  */
-#define clientcredentialWIFI_PASSWORD   ""//"asus access(!)"//"creek2918"
+//#define clientcredentialWIFI_PASSWORD   "Imaginaryvase710"
+#define clientcredentialWIFI_PASSWORD   ""
 
 /**
  * @brief Security type
@@ -68,6 +70,7 @@ static const char clientcredentialMQTT_BROKER_ENDPOINT[] = "a134zra8gtikvt-ats.i
  * Possible values are - eWiFiSecurityOpen, eWiFiSecurityWEP, eWiFiSecurityWPA,
  * eWiFiSecurityWPA2
  */
-#define clientcredentialWIFI_SECURITY   eWiFiSecurityWPA2
+//#define clientcredentialWIFI_SECURITY   eWiFiSecurityWPA2
+#define clientcredentialWIFI_SECURITY   eWiFiSecurityOpen
 
 #endif

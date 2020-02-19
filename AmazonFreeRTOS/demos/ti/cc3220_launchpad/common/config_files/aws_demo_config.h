@@ -73,7 +73,7 @@
 
 /* Timeout used when performing MQTT operations that do not need extra time
  * to perform a TLS negotiation. */
-#define democonfigMQTT_TIMEOUT                               pdMS_TO_TICKS( 2500 )
+#define democonfigMQTT_TIMEOUT                               pdMS_TO_TICKS( 60000 )
 
 /* Send AWS IoT MQTT traffic encrypted. */
 #define democonfigMQTT_AGENT_CONNECT_FLAGS          	     ( mqttagentREQUIRE_TLS )
