@@ -1,6 +1,15 @@
 # Package-Protect
 
-## Understanding the current codebase
+## Understanding repo organization
+This repository is comprised of three distinct versions of the AmazonFreeRTOS project:
+
++ **HelloWorld**: Clean slate for IDE configuration and understanding (and a backup/reference in a disasterous case production code is irreparably broken)
++ **OldReferenceCode**: Archive of previous project work, primarily relevant for writing task and configuring GPIO pins.
++ **PackageProtect**: Production code folder. This is where we should write our drivers.
+
+The **AWS** folder contains content relevant to configuring AWS services.
+
+## Understanding the project architecture
 [This commit comparison](https://github.com/ZoieM/Package-Protect/compare/2d71048..57ad8ff) demonstrates the key files in this project.
 
 ### Key Files for FreeRTOS Tasks:
