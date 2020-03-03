@@ -1,6 +1,6 @@
 ## How to run HelloWorld
 
-**Prerequisites**
+**Prerequisites (First Time Only)**
 1. *Install Code Composer Studio* (IDE) and *Install Uniflash* (TI on-chip flash). If you are using a new board, use Uniflash to *Install the Latest Service Pack*. For detailed instructions, read [set up your development environment](https://docs.aws.amazon.com/freertos/latest/userguide/getting_started_ti.html#ti-setup-env).
 1. If you want monitor console output (useful for debugging), setup PuTTY.
    1. Install [putty.exe](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html).
@@ -31,7 +31,7 @@
          + Typically use `eWiFiSecurityWPA2`.
          + With SJSU_MyDevice, use `eWiFiSecurityOpen`.
 
-**Running the demo**
+**Running the demo (Every Time)**
 1. Double-click *aws_demos* to make it the active project.
 1. *Build* the project.
 1. *Run* the project:
