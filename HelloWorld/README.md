@@ -7,8 +7,8 @@
    1. Create a saved session:
       1. Open PuTTY.
       1. Under *Connection type*, select *Serial*.
-      1. Under *Serial line*, enter `COM11`
-         + (If this doesn't work, open your computer's Device Manager and see which COM ports appear when you plug in the board.)
+      1. Under *Serial line*, enter the com port used by your board, e.g. `COM11`
+         + To find your com port, open your computer's Device Manager and see which UART COM port appears/disappears when you plug/unplug the board.
       1. Under *Speed*, enter `115200`.
       1. Under *Saved sessions*, enter `Package Protect`.
       1. Click *Save*.
