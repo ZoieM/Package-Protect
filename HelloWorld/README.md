@@ -1,11 +1,11 @@
 ## How to run HelloWorld
 
 **Prerequisites (First Time Only)**
-1. Follow the steps to [set up your development environment](https://docs.aws.amazon.com/freertos/latest/userguide/getting_started_ti.html#ti-setup-env).
-   + Intall Code Composer Studio
-   + Install Uniflash
-   + Install the SimpleLink CC3220 SDK
-   + Install the Latest Service Pack
+1. [Set up your development environment](https://docs.aws.amazon.com/freertos/latest/userguide/getting_started_ti.html#ti-setup-env):
+   1. Intall Code Composer Studio
+   1. Install Uniflash
+   1. Install the SimpleLink CC3220 SDK
+   1. Install the Latest Service Pack
    
 1. If you want monitor console output (useful for debugging), setup PuTTY.
    1. Install [putty.exe](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html).
