@@ -14,6 +14,7 @@
       1. Click *Save*.
    
 1. Import the project:
+   1. Clone this repo on to your computer (if needed).
    1. Open Code Composer Studio.
    1. Select *File > Open Projects from File System*.
    1. Click *Directory* and select the *AmazonFreeRTOS* folder located under *HelloWorld*. Four projects should be selected. Click *Finish*.
