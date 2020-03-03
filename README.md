@@ -1,5 +1,10 @@
 # Package Protect
 
+## Hardware References
++ [Official CC3220SF Technical Documents List](http://www.ti.com/tool/CC3220SF-LAUNCHXL#technicaldocuments).
+  + [User's Guide](http://www.ti.com/lit/ug/swru463b/swru463b.pdf)
+  + [Technical Reference Manual](http://www.ti.com/lit/ug/swru465/swru465.pdf)
+
 ## Understanding repo organization
 This repository is comprised of three distinct versions of the AmazonFreeRTOS project:
 
