@@ -1,11 +1,24 @@
 # Package Protect
 
-## Hardware References
-+ [Official CC3220SF Technical Documents List](http://www.ti.com/tool/CC3220SF-LAUNCHXL#technicaldocuments).
+## Hardware
+
+### Components List
+Package Protect uses the following hardware:
++ [SimpleLink™ Wi-Fi® CC3220SF Wireless Microcontroller LaunchPad™ Development Kit](http://www.ti.com/tool/CC3220SF-LAUNCHXL?jktype=tools_software)
++ [Pnuematic Lock](https://www.amazon.com/dp/B01IB3OIVO/ref=sspa_dk_detail_7?psc=1&pd_rd_i=B01IB3OIVO)
++ [4x5 Keypad Membrane](https://www.amazon.com/gp/product/B07RX9ZBF7/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
++ [20x4 UART LCD](https://www.amazon.com/gp/product/B0757BFQM2/ref=ppx_yo_dt_b_asin_title_o03_s00?ie=UTF8&psc=1)
++ [Ultrasonic Sensors](https://www.amazon.com/gp/product/B01COSN7O6/ref=ppx_yo_dt_b_asin_title_o00_s00?ie=UTF8&psc=1)
++ [Limit Switches](https://www.amazon.com/dp/B07BL33XXT/ref=sspa_dk_detail_0?psc=1&pd_rd_i=B07BL33XXT&pd_rd_w=9nFwj&pf_rd_p=45a72588-80f7-4414-9851-786f6c16d42b&pd_rd_wg=6FgEB&pf_rd_r=DRRCBGBSMXJPN6FY4KQX&pd_rd_r=31581f58-97d5-4a86-9922-5602ede98874&spLa=ZW5jcnlwdGVkUXVhbGlmaWVyPUEzR0FFWEo2VTRFUEYyJmVuY3J5cHRlZElkPUEwNzg0NjQ3VUFRWUhLNjJDVTk5JmVuY3J5cHRlZEFkSWQ9QTA4OTgwNDZFTVVBNjlTWElDVDEmd2lkZ2V0TmFtZT1zcF9kZXRhaWwmYWN0aW9uPWNsaWNrUmVkaXJlY3QmZG9Ob3RMb2dDbGljaz10cnVl)
+
+### Hardware References
+For more information about these components, refer to the following documentation:
++ [Official CC3220SF Technical Documents List](http://www.ti.com/tool/CC3220SF-LAUNCHXL#technicaldocuments)
   + [User's Guide](http://www.ti.com/lit/ug/swru463b/swru463b.pdf)
   + [Technical Reference Manual](http://www.ti.com/lit/ug/swru465/swru465.pdf)
 
-## Understanding repo organization
+## Software
+### Understanding repo organization
 This repository is comprised of three distinct versions of the AmazonFreeRTOS project:
 
 + **HelloWorld**: Clean slate for IDE configuration and understanding (and a backup/reference in a disasterous case production code is irreparably broken)
@@ -14,10 +27,10 @@ This repository is comprised of three distinct versions of the AmazonFreeRTOS pr
 
 The **AWS** folder contains content relevant to configuring AWS services.
 
-## Understanding the project architecture
+### Understanding the project architecture
 [This commit comparison](https://github.com/ZoieM/Package-Protect/compare/2d71048..57ad8ff) demonstrates the key files in this project.
 
-### Key files for FreeRTOS tasks:
+#### Key files for FreeRTOS tasks:
 + **`AmazonFreeRTOS/demos/common/mqtt/aws_hello_world.c`** is our ***main file***. In commit 57ad8ff:
   + Lines 1-88 are **includes and global variables**.
   + Lines 89-527 are **tasks for AWS MQTT messages**.
@@ -29,7 +42,7 @@ The **AWS** folder contains content relevant to configuring AWS services.
     + For more info on UART, read the comments in **`AmazonFreeRTOS\lib\third_party\mcu_vendor\ti\SimpleLink_CC32xx\v2_10_00_04\source\ti\drivers\uart\UARTCC32XX.h`** and **`AmazonFreeRTOS\lib\third_party\mcu_vendor\ti\SimpleLink_CC32xx\v2_10_00_04\source\ti\drivers\UART.h`**.
   + NOTE:  "The order of the pin configurations [in CC3220SF_LAUNCHXL.c] must coincide with [the order of] what was defined in CC3220SF_LAUNCHXL.h," and "pins not used for interrupts should be placed at the end of the array"
 
-### Key files for AWS communication: 
+#### Key files for AWS communication: 
 + **`AmazonFreeRTOS/demos/common/include/aws_clientcredential.h`** contains the information required for ***MQTT communication via AWS IoT***
   + `static const char clientcredentialMQTT_BROKER_ENDPOINT[]` Set this equal to your **AWS IoT Endpoint** (e.g. <1234567890123>-ats.iot.<us-east-1>.amazonaws.com). To find the endpoint, go to AWS IoT Console > Settings > Endpoint.
   + `#define clientcredentialIOT_THING_NAME` Set this equal to the name of the **AWS Thing** that represents the TI CC3220SF-LAUNCHXL microcontroller.
