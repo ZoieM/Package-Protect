@@ -18,7 +18,7 @@ For more information about these components, refer to the following documentatio
   + [Technical Reference Manual](http://www.ti.com/lit/ug/swru465/swru465.pdf)
 
 ## Software
-### Understanding repo organization
+### Repository Organization
 This repository is comprised of three distinct versions of the AmazonFreeRTOS project:
 
 + **HelloWorld**: Clean slate for IDE configuration and understanding (and a backup/reference in a disasterous case production code is irreparably broken)
@@ -27,7 +27,7 @@ This repository is comprised of three distinct versions of the AmazonFreeRTOS pr
 
 The **AWS** folder contains content relevant to configuring AWS services.
 
-### Understanding the project architecture
+### Project Architecture
 [This commit comparison](https://github.com/ZoieM/Package-Protect/compare/2d71048..57ad8ff) demonstrates the key files in this project.
 
 #### Key files for FreeRTOS tasks:
