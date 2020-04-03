@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Texas Instruments Incorporated
+ * Copyright (c) 2016-2017, Texas Instruments Incorporated
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,12 +42,6 @@
  *
  *  ============================================================================
  */
-/** ============================================================================
-
- *  This file was automatically generated on 4/3/2020 at 12:35:18 PM
- *  by TI PinMux version 1.4.0+1297
- *  ============================================================================
- */
 #ifndef __CC3220SF_LAUNCHXL_H
 #define __CC3220SF_LAUNCHXL_H
 
@@ -68,6 +62,17 @@ typedef enum CC3220SF_LAUNCHXL_ADCName {
 
     CC3220SF_LAUNCHXL_ADCCOUNT
 } CC3220SF_LAUNCHXL_ADCName;
+
+/*!
+ *  @def    CC3220SF_LAUNCHXL_CaptureName
+ *  @brief  Enum of Capture names on the CC3220SF_LAUNCHXL dev board
+ */
+typedef enum CC3220SF_LAUNCHXL_CaptureName {
+    CC3220SF_LAUNCHXL_CAPTURE0 = 0,
+    CC3220SF_LAUNCHXL_CAPTURE1,
+
+    CC3220SF_LAUNCHXL_CAPTURECOUNT
+} CC3220SF_LAUNCHXL_CaptureName;
 
 /*!
  *  @def    CC3220SF_LAUNCHXL_CryptoName
@@ -93,8 +98,8 @@ typedef enum CC3220SF_LAUNCHXL_GPIOName {
      *  I2C and PWM peripherals. In order for those examples to work, these
      *  LEDs are  taken out of gpioPinCOnfig[]
      */
-    //CC3220SF_LAUNCHXL_GPIO_LED_D6,
-    //CC3220SF_LAUNCHXL_GPIO_LED_D5,
+    CC3220SF_LAUNCHXL_GPIO_LED_D6,
+    CC3220SF_LAUNCHXL_GPIO_LED_D5,
 
     CC3220SF_LAUNCHXL_GPIOCOUNT
 } CC3220SF_LAUNCHXL_GPIOName;
@@ -149,15 +154,6 @@ typedef enum CC3220SF_LAUNCHXL_SDName {
 
     CC3220SF_LAUNCHXL_SDCOUNT
 } CC3220SF_LAUNCHXL_SDName;
-/*!
- *  @def    CC3220SF_LAUNCHXL_SDSPIName
- *  @brief  Enum of SDSPI names on the CC3220SF_LAUNCHXL dev board
- */
-typedef enum CC3220SF_LAUNCHXL_SDSPIName {
-    CC3220SF_LAUNCHXL_SDSPI0 = 0,
-
-    CC3220SF_LAUNCHXL_SDSPICOUNT
-} CC3220SF_LAUNCHXL_SDSPIName;
 
 /*!
  *  @def    CC3220SF_LAUNCHXL_SPIName
@@ -169,6 +165,18 @@ typedef enum CC3220SF_LAUNCHXL_SPIName {
 
     CC3220SF_LAUNCHXL_SPICOUNT
 } CC3220SF_LAUNCHXL_SPIName;
+
+/*!
+ *  @def    CC3220SF_LAUNCHXL_TimerName
+ *  @brief  Enum of Timer names on the CC3220SF_LAUNCHXL dev board
+ */
+typedef enum CC3220SF_LAUNCHXL_TimerName {
+    CC3220SF_LAUNCHXL_TIMER0 = 0,
+    CC3220SF_LAUNCHXL_TIMER1,
+    CC3220SF_LAUNCHXL_TIMER2,
+
+    CC3220SF_LAUNCHXL_TIMERCOUNT
+} CC3220SF_LAUNCHXL_TimerName;
 
 /*!
  *  @def    CC3220SF_LAUNCHXL_UARTName
