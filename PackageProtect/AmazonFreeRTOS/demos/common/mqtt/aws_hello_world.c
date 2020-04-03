@@ -518,7 +518,7 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
 
-void vTestTask (uint_least8_t index) {
+void vTestTask (void * pvParameters ) {
     configPRINTF( ( "Entering vTestTask\n" ) );
 
     //Write to column 1
@@ -527,7 +527,7 @@ void vTestTask (uint_least8_t index) {
     configPRINTF( ( "1 was written to GPIO pin for Column 1\n" ) );
 
     //Read from row 1 10 times
-    for(int i=0; i<10; i++)//consider changing this to "while(true)"
+    while(true)
     {
         vTaskDelay(pdMS_TO_TICKS( 1000UL ));
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
@@ -540,8 +540,6 @@ void vTestTask (uint_least8_t index) {
         }
 
     }
-
-    configPRINTF( ( "End of vTestTask.\n" ) );
 }
 
 /*Package Protect: END FreeRTOS Task Definitions*/
