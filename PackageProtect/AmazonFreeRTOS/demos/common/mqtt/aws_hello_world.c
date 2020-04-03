@@ -511,13 +511,40 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
     vTaskDelete( NULL ); /* Delete this task. */
 }
 /*-----------------------------------------------------------*/
-/*Package Protect: BEGIN Functions*/
-/*Package Protect: END Functions*/
+/*Package Protect: BEGIN Helper Functions*/
+/*Package Protect: END Helper Functions*/
 /*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
-/*Package Protect: BEGIN Task Definitions*/
-/*Package Protect: END Task Definitions*/
+/*Package Protect: BEGIN FreeRTOS Task Definitions*/
+
+void vTestTask (uint_least8_t index) {
+    configPRINTF( ( "Entering vTestTask\n" ) );
+
+    //Write to column 1
+    GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+    vTaskDelay(pdMS_TO_TICKS( 100UL ));
+    configPRINTF( ( "1 was written to GPIO pin for Column 1\n" ) );
+
+    //Read from row 1 10 times
+    for(int i=0; i<10; i++)//consider changing this to "while(true)"
+    {
+        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
+        {
+            configPRINTF( ( "ROW 1 returned true!\n" ) );
+        }
+        else
+        {
+            configPRINTF( ( "ROW 1 returned false!\n" ) );
+        }
+
+    }
+
+    configPRINTF( ( "End of vTestTask.\n" ) );
+}
+
+/*Package Protect: END FreeRTOS Task Definitions*/
 /*-----------------------------------------------------------*/
 
 void vStartMQTTEchoDemo( void )
@@ -539,24 +566,27 @@ void vStartMQTTEchoDemo( void )
     configASSERT( xEchoMessageBuffer );
 
     /*-----------------------------------------------------------*/
-    /*Package Protect: BEGIN Creating Tasks*/
+    /*Package Protect: BEGIN Creating FreeRTOS Tasks*/
     configPRINTF( ( "Starting Tasks for Package Protect\r\n" ) );
     /*begin examples:
     xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
     xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
     end examples*/
-    /*Package Protect: END Creating Tasks*/
+
+    xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
+
+    /*Package Protect: END FreeRTOS Creating Tasks*/
     /*-----------------------------------------------------------*/
 
 
-    /* Create the task that publishes messages to the MQTT broker every five
-     * seconds.  This task, in turn, creates the task that echoes data received
-     * from the broker back to the broker. */
-    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
-                          "MQTTEcho",                          /* The name to assign to the task being created. */
-                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
-                          NULL,                                /* The task parameter is not being used. */
-                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
-                          NULL );                              /* Not storing the task's handle. */
+//    /* Create the task that publishes messages to the MQTT broker every five
+//     * seconds.  This task, in turn, creates the task that echoes data received
+//     * from the broker back to the broker. */
+//    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
+//                          "MQTTEcho",                          /* The name to assign to the task being created. */
+//                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
+//                          NULL,                                /* The task parameter is not being used. */
+//                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
+//                          NULL );                              /* Not storing the task's handle. */
 }
 /*-----------------------------------------------------------*/
