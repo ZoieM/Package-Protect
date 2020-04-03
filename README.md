@@ -8,8 +8,8 @@ Package Protect uses the following hardware:
 + [Pnuematic Lock](https://www.amazon.com/dp/B01IB3OIVO/ref=sspa_dk_detail_7?psc=1&pd_rd_i=B01IB3OIVO)
 + [4x5 Keypad Membrane](https://www.amazon.com/gp/product/B07RX9ZBF7/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
 + [20x4 UART LCD](https://www.amazon.com/gp/product/B0757BFQM2/ref=ppx_yo_dt_b_asin_title_o03_s00?ie=UTF8&psc=1)
-+ [Ultrasonic Sensors](https://www.amazon.com/gp/product/B01COSN7O6/ref=ppx_yo_dt_b_asin_title_o00_s00?ie=UTF8&psc=1)
-+ [Limit Switches](https://www.amazon.com/dp/B07BL33XXT/ref=sspa_dk_detail_0?psc=1&pd_rd_i=B07BL33XXT&pd_rd_w=9nFwj&pf_rd_p=45a72588-80f7-4414-9851-786f6c16d42b&pd_rd_wg=6FgEB&pf_rd_r=DRRCBGBSMXJPN6FY4KQX&pd_rd_r=31581f58-97d5-4a86-9922-5602ede98874&spLa=ZW5jcnlwdGVkUXVhbGlmaWVyPUEzR0FFWEo2VTRFUEYyJmVuY3J5cHRlZElkPUEwNzg0NjQ3VUFRWUhLNjJDVTk5JmVuY3J5cHRlZEFkSWQ9QTA4OTgwNDZFTVVBNjlTWElDVDEmd2lkZ2V0TmFtZT1zcF9kZXRhaWwmYWN0aW9uPWNsaWNrUmVkaXJlY3QmZG9Ob3RMb2dDbGljaz10cnVl)
++ ~[Ultrasonic Sensors](https://www.amazon.com/gp/product/B01COSN7O6/ref=ppx_yo_dt_b_asin_title_o00_s00?ie=UTF8&psc=1)~ (Removed due to quaratine)
++ ~[Limit Switches](https://www.amazon.com/dp/B07BL33XXT/ref=sspa_dk_detail_0?psc=1&pd_rd_i=B07BL33XXT&pd_rd_w=9nFwj&pf_rd_p=45a72588-80f7-4414-9851-786f6c16d42b&pd_rd_wg=6FgEB&pf_rd_r=DRRCBGBSMXJPN6FY4KQX&pd_rd_r=31581f58-97d5-4a86-9922-5602ede98874&spLa=ZW5jcnlwdGVkUXVhbGlmaWVyPUEzR0FFWEo2VTRFUEYyJmVuY3J5cHRlZElkPUEwNzg0NjQ3VUFRWUhLNjJDVTk5JmVuY3J5cHRlZEFkSWQ9QTA4OTgwNDZFTVVBNjlTWElDVDEmd2lkZ2V0TmFtZT1zcF9kZXRhaWwmYWN0aW9uPWNsaWNrUmVkaXJlY3QmZG9Ob3RMb2dDbGljaz10cnVl)~ (Removed due to quaratine)
 
 ### Hardware References
 For more information about these components, refer to the following documentation:
