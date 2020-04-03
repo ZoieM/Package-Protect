@@ -77,6 +77,11 @@
 #include "aws_demo_config.h"
 #include "aws_hello_world.h"
 
+/*-----------------------------------------------------------*/
+/*Package Protect: BEGIN Includes*/
+/*Package Protect: END Includes*/
+/*-----------------------------------------------------------*/
+
 /**
  * @brief MQTT client ID.
  *
@@ -113,6 +118,10 @@
  */
 #define echoDONT_BLOCK           ( ( TickType_t ) 0 )
 
+/*-----------------------------------------------------------*/
+/*Package Protect: BEGIN Global Variables*/
+//example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+/*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
 /**
@@ -502,10 +511,24 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
     vTaskDelete( NULL ); /* Delete this task. */
 }
 /*-----------------------------------------------------------*/
+/*Package Protect: BEGIN Functions*/
+/*Package Protect: END Functions*/
+/*-----------------------------------------------------------*/
+
+/*-----------------------------------------------------------*/
+/*Package Protect: BEGIN Task Definitions*/
+/*Package Protect: END Task Definitions*/
+/*-----------------------------------------------------------*/
 
 void vStartMQTTEchoDemo( void )
 {
-    configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
+    /*-----------------------------------------------------------*/
+    /*Package Protect: BEGIN Creating Semaphores*/
+    //example: xBoxOpenSem = xSemaphoreCreateBinary(); //Semaphore for controlling the lock
+    /*Package Protect: END Creating Semaphores*/
+    /*-----------------------------------------------------------*/
+
+    //configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
 
     /* Create the message buffer used to pass strings from the MQTT callback
      * function to the task that echoes the strings back to the broker.  The
@@ -514,6 +537,17 @@ void vStartMQTTEchoDemo( void )
      * for the message length, which is held in a size_t variable. */
     xEchoMessageBuffer = xMessageBufferCreate( ( size_t ) echoMAX_DATA_LENGTH + sizeof( size_t ) );
     configASSERT( xEchoMessageBuffer );
+
+    /*-----------------------------------------------------------*/
+    /*Package Protect: BEGIN Creating Tasks*/
+    configPRINTF( ( "Starting Tasks for Package Protect\r\n" ) );
+    /*begin examples:
+    xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
+    xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
+    end examples*/
+    /*Package Protect: END Creating Tasks*/
+    /*-----------------------------------------------------------*/
+
 
     /* Create the task that publishes messages to the MQTT broker every five
      * seconds.  This task, in turn, creates the task that echoes data received
