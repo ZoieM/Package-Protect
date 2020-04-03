@@ -14,4 +14,4 @@
   + Select **Add** and enter `FREERTOS_INSTALL_DIR` in the **Variable name**
   + In the **Type** dropdown, select **Directory**
   + Select **Browse** for the **Value** blank, and select the folder containing your version of FreeRTOS (e.g. "FreeRTOSv10.3.1")
-  + Note: You may need to download FreeRTOS(https://www.freertos.org/a00104.html)
+  + Note: You may need to download FreeRTOS (https://www.freertos.org/a00104.html)
