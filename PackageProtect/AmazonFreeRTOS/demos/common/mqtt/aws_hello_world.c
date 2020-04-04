@@ -288,6 +288,15 @@ void display_enter_pin_screen()
 #define EMPTY_PIN 1
 uint16_t saved_pin;
 uint16_t current_pin;
+uint8_t correct_pin_entered;
+SemaphoreHandle_t xBoxOpenSem;
+SemaphoreHandle_t xBoxDoneSem;
+SemaphoreHandle_t xCollectPinSem;
+SemaphoreHandle_t xPinEnteredSem;
+SemaphoreHandle_t xPinCheckedSem;
+SemaphoreHandle_t xBoxUnlockedScreenSem;
+SemaphoreHandle_t xBoxErrorScreenSem;
+SemaphoreHandle_t xDisplayNewNumberSem;
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -716,6 +725,128 @@ static uint16_t remove_one_from_pin(uint16_t pin)
 
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
+static void vOpenBoxTask(void *pvParameters)
+{
+    while (1)
+    {
+        if (xSemaphoreTake(xBoxOpenSem))
+        {
+            configPRINTF("Unlocking box...");
+            // insert driver here to unlock
+            configPRINTF("Box Unlocked.");
+            xSemaphoreGive(xBoxOpenSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100UL));
+    }
+}
+
+static void vReadButtonPressed(void *pvParameters)
+{
+    while (1)
+    {
+        // if(GPIO polling pin == pressed)
+        {
+            // Add the reading of the most recent button press interrupt
+            // Add driver code to read interrupt and store button value into var
+            xSemaphoreGive(xButtonPressedSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100UL));
+    }
+}
+
+static void vKeypadTask(void *pvParameters)
+{
+    int8_t number_entered = 1;
+    int8_t delete_button_pressed = 1;
+    int8_t enter_pressed = 1;
+    while (1)
+    {
+        xSemaphoreTake(xCollectPinSem);
+        current_pin = EMPTY_PIN;
+        // Add drivers to check which button was pressed
+        if (number_entered)
+        {
+            int8_t button_value = 0;
+            current_pin = insert_into_pin(current_pin, button_value);
+            /*
+             * If it is a number and we have less than 4, put the value in
+             * a queue or other data structure. (Store int pressed,
+             * update count, tell screen to type it). While we have 4 numbers,
+             * ignore any future numbers pressed.
+            */
+           xSemaphoreGive(xDisplayNewNumberSem);
+        }
+        if (delete_button_pressed)
+        {
+            current_pin = remove_one_from_pin(current_pin);
+            xSemaphoreGive(xDisplayNewNumberSem);
+        }
+        if (enter_pressed)
+        {
+            xSemaphoreGive(xPinEnteredSem);
+            xSemaphoreTake(xPinCheckedSem);
+            if(compare_pin(saved_pin, current_pin))
+            {
+                xSemaphoreGive(xBoxUnlockedScreenSem);
+            }
+            else
+            {
+                xSemaphoreGive(xBoxErrorScreenSem);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
+static void vScreenTask(void *pvParameters)
+{
+    // Add driver code to display "Enter Pin"
+    xSemaphoreGive(xCollectPinSem);
+    while (1)
+    {
+        if (xSemaphoreTake(xDisplayNewNumberSem))
+        {
+            // Add driver to show most recently entered number on screen
+            xSemaphoreGive(xCollectPinSem);
+        }
+        if (xSemaphoreTake(xBoxErrorScreenSem))
+        {
+            // Add screen driver code show error screen here
+            pdMS_TO_TICKS(3000UL);
+            // Add screen driver code to show clear collect pin screen
+            xSemaphoreGive(xCollectPinSem);
+        }
+        if (xSemaphoreTake(xBoxUnlockedScreenSem))
+        {
+            // Add driver to show box is unlocked
+            pdMS_TO_TICKS(10000UL);
+            xSemaphoreGive(xCollectPinSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
+static void vCheckPinTask(void *pvParameters)
+{
+    while (1)
+    {
+        if(xSemaphoreTake(xPinEnteredSem)) {
+            if (compare_pin(current_pin, saved_pin))
+            {
+                correct_pin_entered = 1;
+            }
+            else
+            {
+                correct_pin_entered = 0;
+            }
+            if (correct_pin_entered)
+            {
+                xSemaphoreGive(xBoxOpenSem);
+                xSemaphoreTake(xBoxDoneSem);
+            }
+            xSemaphoreGive(xPinCheckedSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
 
 void vTestTask (void * pvParameters ) {
     configPRINTF( ( "Entering vTestTask\n" ) );
@@ -782,12 +913,20 @@ void vStartMQTTEchoDemo( void )
 {
     /*-----------------------------------------------------------*/
     /*Package Protect: BEGIN Creating Semaphores*/
-    //example: xBoxOpenSem = xSemaphoreCreateBinary(); //Semaphore for controlling the lock
+    xBoxOpenSem = xSemaphoreCreateBinary();
+    xBoxDoneSem = xSemaphoreCreateBinary();
+    xCollectPinSem = xSemaphoreCreateBinary();
+    xPinEnteredSem = xSemaphoreCreateBinary();
+    xPinCheckedSem = xSemaphoreCreateBinary();
+    xBoxUnlockedScreenSem = xSemaphoreCreateBinary();
+    xBoxErrorScreenSem = xSemaphoreCreateBinary();
+    xDisplayNewNumberSem = xSemaphoreCreateBinary();
     /*Package Protect: END Creating Semaphores*/
 
     /*Package Protect: Initialize pin queue*/
     current_pin = EMPTY_PIN;
     saved_pin = EMPTY_PIN;
+    correct_pin_entered = 0;
     /*Package Protect: END Initialize pin queue*/
     /*-----------------------------------------------------------*/
 
@@ -808,6 +947,10 @@ void vStartMQTTEchoDemo( void )
     xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
     xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
     end examples*/
+    // xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
+    // xTaskCreate(vKeypadTask, "Keypad", 512, NULL, 2, NULL);
+    // xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
+    // xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
 
     xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
     xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
