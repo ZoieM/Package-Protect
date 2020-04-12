@@ -44,7 +44,7 @@ To see where the pins are on your board, look at the [Pinout Guide](http://www.t
        + Info: `GPIOCC32XX_GPIO_23 | GPIO_CFG_INPUT | GPIO_CFG_IN_INT_RISING`     
  
  ### UART Pins
- + TX GPIO_07 (pin 62). Code still in progress.
+ + TX GPIO_16 (pin 07). Code still in progress.
 
 ## How to run PackageProtect
 
