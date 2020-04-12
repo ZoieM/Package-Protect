@@ -79,8 +79,134 @@
 
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Includes*/
+//Derek's includes
+#include "stdint.h"
+#include "stddef.h"
 /*Package Protect: END Includes*/
 /*-----------------------------------------------------------*/
+
+/*-----------------------------------------------------------*/
+/*LCD: BEGIN Functions and Global Variables*/
+#define CONST_LCD_UART_REG_WRITE (0x80)
+#define CONST_LCD_WIDTH 20
+#define CONST_ADDR_LCD_NUM_ROWS         8
+#define CONST_LCD_EMPTY 0x20
+#define CONST_ADDR_LCD_DATA_START       22
+#define CONST_LCD_ACTION_GO_BIT             (1 << 7)
+#define CONST_ADDR_SPCL_REG             18
+#define CONST_ADDR_UNLOCK1_REG          19
+#define CONST_ADDR_UNLOCK2_REG          20
+#define CONST_LCD_NUM_ROWS 4
+#define CONST_ADDR_LCD_ACTION           21
+#define CONST_SPL_FUNC_LCD_CONTRAST                 3
+#define CONST_UNLOCK1 0x12
+#define CONST_UNLOCK2 0x34
+#define CONST_ADDR_SPCL_W_REG_1         17
+#define CONST_ADDR_LCD_DATA_START       22
+#define CONST_LCD_DATA_SIZE             21
+#define CONST_MAX_LCD_CONTRAST 160
+#define CONST_ADDR_LCD_DATA_END         (CONST_ADDR_LCD_DATA_START + CONST_LCD_DATA_SIZE)
+#define CONST_LAST_REG_ADDR     CONST_ADDR_LCD_DATA_END
+UART_Handle uart;
+UART_Params uartParams;
+unsigned char lcd_uart_tx(unsigned char *buf, unsigned char num_bytes)
+{
+    unsigned char x;
+
+    for(x = 0; x < num_bytes; x++)
+    {
+        UART_write(uart, &buf[x], 1);
+        vTaskDelay(1);
+    }
+
+    return 0;
+}
+unsigned char lcd_uart_write_reg(unsigned char addr, unsigned char data)
+{
+    unsigned char buf[2];
+
+    //Send read request
+    buf[0] = CONST_LCD_UART_REG_WRITE | addr;
+    buf[1] = data;
+
+    lcd_uart_tx(buf, 2);
+    vTaskDelay(1);
+
+    return 0;
+}
+
+//Write Register
+unsigned char lcdWriteReg(unsigned char addr, unsigned char data)
+{
+    lcd_uart_write_reg(addr, data);
+    return 0;
+}
+
+//Update the LCD
+//row should be 1-4
+//Data is a pointer to the data to be displayed on that particular row
+//
+//To clear the LCD, update each row with white space " "
+inline unsigned char lcdRowWrite(unsigned char row, unsigned char *new_data)
+{
+    unsigned char y;
+    unsigned char data_string[CONST_LCD_WIDTH+1];
+
+    //Check row number
+    if((row < 1) || (row > CONST_LCD_NUM_ROWS))
+    {   return 1;
+    }
+
+//    //Check length of string
+    y = strlen((char*)new_data);
+    if(y > CONST_LCD_WIDTH)
+    {   return 1;
+    }
+
+    //Initialize to empty
+    memset(data_string, CONST_LCD_EMPTY, sizeof(data_string));
+
+    //copy the new data
+    memcpy(data_string, new_data, y);
+
+    //Write to LCD
+    for(y = 0; y < CONST_LCD_WIDTH; y++)
+    { lcdWriteReg(CONST_ADDR_LCD_DATA_START + y, data_string[y]);
+    }
+
+    //Issue update command
+    lcdWriteReg(CONST_ADDR_LCD_ACTION, (row-1) | CONST_LCD_ACTION_GO_BIT);
+
+   //Wait for LCD update
+    vTaskDelay(5);
+
+    return 0;
+}
+//Special operations requiring an unlock sequence
+unsigned char lcdSpecialFunction(unsigned char func)
+{
+    unsigned char x;
+
+    x = lcdWriteReg(CONST_ADDR_SPCL_REG, func);
+    x |= lcdWriteReg(CONST_ADDR_UNLOCK1_REG, CONST_UNLOCK1);
+    x |= lcdWriteReg(CONST_ADDR_UNLOCK2_REG, CONST_UNLOCK2);
+
+    //Wait a little bit
+    vTaskDelay(5);
+    return x;
+}
+//Updates the contrast, argument can be between 0 and 160
+//Changes are not saved to non volatile memory
+unsigned char lcdContrast(unsigned char val)
+{   unsigned char y;
+
+    y = lcdWriteReg(CONST_ADDR_SPCL_W_REG_1, val);
+    y |= lcdSpecialFunction(CONST_SPL_FUNC_LCD_CONTRAST);
+    return y;
+}
+/*LCD: END Functions and Global Variables*/
+/*-----------------------------------------------------------*/
+
 
 /**
  * @brief MQTT client ID.
@@ -529,7 +655,7 @@ void vTestTask (void * pvParameters ) {
     //Read from row 1 10 times
     while(true)
     {
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+        vTaskDelay(pdMS_TO_TICKS( 100000000000UL ));
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
         {
             configPRINTF( ( "ROW 1 returned true!\n" ) );
@@ -542,6 +668,58 @@ void vTestTask (void * pvParameters ) {
     }
 }
 
+void vLCDtask (void * pvParameters ) {
+    unsigned char x = 0, y;
+    unsigned char buf[CONST_LAST_REG_ADDR+1];
+
+    configPRINTF( ( "UART_init() function called \r\n" ) );
+
+    /* Create a UART with data processing off. */
+    UART_Params_init(&uartParams);
+    uartParams.writeDataMode = UART_DATA_BINARY;
+    uartParams.readDataMode = UART_DATA_BINARY;
+    uartParams.readReturnMode = UART_RETURN_FULL;
+    uartParams.readEcho = UART_ECHO_OFF;
+    uartParams.baudRate = 115200;
+
+    //using UART1
+    uart = UART_open(1, &uartParams);
+
+    if (uart == NULL) {
+        configPRINTF( ( "UART_open() function failed \r\n" ) );
+        /* UART_open() failed */
+        while (1);
+    }
+
+    while(1){
+        /** some example code that changes contrast and writes to each row **/
+
+        //Test Contrast
+        for(y = 0; y <= CONST_MAX_LCD_CONTRAST; y+=10)
+        {   x |= lcdContrast(y);
+
+            sprintf((char*)buf, "Contrast = %d/%d", y,CONST_MAX_LCD_CONTRAST);
+            x |= lcdRowWrite(4,buf);
+            //add a delay here for readability
+        }
+
+//        lcdSpecialFunction(CONST_SPL_FUNC_CPU_RESET);//Hard Reset the LCD
+
+        //Erase
+        for(y = 0; y <= CONST_LCD_NUM_ROWS; y++)
+        {   sprintf((char*) buf, " ");
+            x |= lcdRowWrite(y,buf);
+        }
+        vTaskDelay(1000);
+        //Write
+        for(y = 0; y <= CONST_LCD_NUM_ROWS; y++)
+        {
+            sprintf((char*)buf, "Row %d",y);
+            x |= lcdRowWrite(y,buf);
+        }
+    }
+
+}
 /*Package Protect: END FreeRTOS Task Definitions*/
 /*-----------------------------------------------------------*/
 
@@ -572,6 +750,7 @@ void vStartMQTTEchoDemo( void )
     end examples*/
 
     xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
+    xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
 
     /*Package Protect: END FreeRTOS Creating Tasks*/
     /*-----------------------------------------------------------*/
