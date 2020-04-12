@@ -655,7 +655,7 @@ void vTestTask (void * pvParameters ) {
     //Read from row 1 10 times
     while(true)
     {
-        vTaskDelay(pdMS_TO_TICKS( 100000000000UL ));
+        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
         {
             configPRINTF( ( "ROW 1 returned true!\n" ) );
