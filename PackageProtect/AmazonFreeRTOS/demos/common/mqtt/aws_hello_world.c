@@ -82,6 +82,7 @@
 //Derek's includes
 #include "stdint.h"
 #include "stddef.h"
+#include "queue.h"
 /*Package Protect: END Includes*/
 /*-----------------------------------------------------------*/
 
@@ -285,6 +286,14 @@ void display_enter_pin_screen()
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Global Variables*/
 //example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+typedef struct node
+{
+  int16_t pin_number;
+  TAILQ_ENTRY(node) nodes;
+} node_t;
+
+typedef TAILQ_HEAD(head_s, node) head_t;
+volatile head_t head;
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -676,6 +685,66 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 }
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Helper Functions*/
+static int16_t get_pin_from_queue(head_t *head)
+{
+  int16_t result = 0;
+  int32_t multiplier = 1;
+  struct node *current_node = NULL;
+  TAILQ_FOREACH(current_node, head, nodes)
+  {
+    int16_t current_pin = current_node->pin_number;
+    current_pin *= multiplier;
+    result += current_pin;
+    multiplier *= 10;
+  }
+  return result;
+}
+
+static void clear_queue(head_t *head)
+{
+  struct node *current_node = NULL;
+  while (!TAILQ_EMPTY(head))
+  {
+    current_node = TAILQ_FIRST(head);
+    TAILQ_REMOVE(head, current_node, nodes);
+    free(current_node);
+    current_node = NULL;
+  }
+}
+
+static void insert_into_queue(head_t *head, int8_t value)
+{
+  struct node *new_node = NULL;
+  new_node = malloc(sizeof(struct node));
+  if (new_node == NULL)
+  {
+    printf("malloc failed");
+  }
+  new_node->pin_number = value;
+  TAILQ_INSERT_HEAD(head, new_node, nodes);
+  new_node = NULL;
+}
+
+static void delete_one_from_queue(head_t *head)
+{
+  if (TAILQ_EMPTY(head))
+  {
+    return;
+  }
+  else
+  {
+    struct node *current_node = NULL;
+    current_node = TAILQ_FIRST(head);
+    TAILQ_REMOVE(head, current_node, nodes);
+    free(current_node);
+    current_node = NULL;
+  }
+}
+
+static bool queue_is_empty(head_t *head)
+{
+    return TAILQ_EMPTY(head) ? true : false;
+}
 /*Package Protect: END Helper Functions*/
 /*-----------------------------------------------------------*/
 
@@ -749,6 +818,10 @@ void vStartMQTTEchoDemo( void )
     /*Package Protect: BEGIN Creating Semaphores*/
     //example: xBoxOpenSem = xSemaphoreCreateBinary(); //Semaphore for controlling the lock
     /*Package Protect: END Creating Semaphores*/
+
+    /*Package Protect: Initialize pin queue*/
+    TAILQ_INIT(&head);
+    /*Package Protect: END Initialize pin queue*/
     /*-----------------------------------------------------------*/
 
     //configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
