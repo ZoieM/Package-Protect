@@ -285,6 +285,9 @@ void display_enter_pin_screen()
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Global Variables*/
 //example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+#define EMPTY_PIN 1
+uint16_t saved_pin;
+uint16_t current_pin;
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -676,6 +679,38 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 }
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Helper Functions*/
+static int compare_pin(uint16_t pin_1, uint16_t pin_2)
+{
+    if (pin_1 == pin_2)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+static uint16_t insert_into_pin(uint16_t pin, uint16_t value)
+{
+    // Ensure we dont add a number if it's already four digits.
+    if (pin / 10000 != 1)
+    {
+        pin *= 10;
+        pin += value;
+    }
+    return pin;
+}
+
+static uint16_t remove_one_from_pin(uint16_t pin)
+{
+    // Ensure we don't remove if there is no pin to begin with.
+    if (pin != EMPTY_PIN)
+    {
+        pin /= 10;
+    }
+    return pin;
+}
 /*Package Protect: END Helper Functions*/
 /*-----------------------------------------------------------*/
 
@@ -749,6 +784,11 @@ void vStartMQTTEchoDemo( void )
     /*Package Protect: BEGIN Creating Semaphores*/
     //example: xBoxOpenSem = xSemaphoreCreateBinary(); //Semaphore for controlling the lock
     /*Package Protect: END Creating Semaphores*/
+
+    /*Package Protect: Initialize pin queue*/
+    current_pin = EMPTY_PIN;
+    saved_pin = EMPTY_PIN;
+    /*Package Protect: END Initialize pin queue*/
     /*-----------------------------------------------------------*/
 
     //configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
