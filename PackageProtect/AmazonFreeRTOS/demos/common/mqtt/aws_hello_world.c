@@ -520,23 +520,33 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 
 void vTestTask (void * pvParameters ) {
     configPRINTF( ( "Entering vTestTask\n" ) );
-
+    float a;
     //Write to column 1
+//    GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+//    vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+    GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+    vTaskDelay(pdMS_TO_TICKS( 10000UL ));
+    configPRINTF( ( "0 was written to GPIO pin for Column 1\n" ) );
     GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
-    vTaskDelay(pdMS_TO_TICKS( 100UL ));
+    vTaskDelay(pdMS_TO_TICKS( 10000UL ));
+    configPRINTF( ( "1 was written to GPIO pin for Column 1\n" ) );
+
     configPRINTF( ( "1 was written to GPIO pin for Column 1\n" ) );
 
     //Read from row 1 10 times
     while(true)
     {
+
         vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))
         {
+            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5);
             configPRINTF( ( "ROW 1 returned true!\n" ) );
         }
         else
         {
-            configPRINTF( ( "ROW 1 returned false!\n" ) );
+            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5);
+            configPRINTF( ( "ROW 1 returned false! value found is %f\n", a) );
         }
 
     }

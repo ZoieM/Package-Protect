@@ -2,23 +2,12 @@
 <configurations XML_version="1.2" id="configurations_0">
 <configuration XML_version="1.2" id="Texas Instruments XDS110 USB Debug Probe_0">
         <instance XML_version="1.2" desc="Texas Instruments XDS110 USB Debug Probe_0" href="connections/TIXDS110_Connection.xml" id="Texas Instruments XDS110 USB Debug Probe_0" xml="TIXDS110_Connection.xml" xmlpath="connections"/>
-        <connection XML_version="1.2" desc="Texas Instruments XDS110 USB Debug Probe_0" id="Texas Instruments XDS110 USB Debug Probe_0">
+        <connection XML_version="1.2" id="Texas Instruments XDS110 USB Debug Probe_0">
             <instance XML_version="1.2" href="drivers/tixds510icepick_c.xml" id="drivers" xml="tixds510icepick_c.xml" xmlpath="drivers"/>
             <instance XML_version="1.2" href="drivers/tixds510cs_dap.xml" id="drivers" xml="tixds510cs_dap.xml" xmlpath="drivers"/>
             <instance XML_version="1.2" href="drivers/tixds510cortexM.xml" id="drivers" xml="tixds510cortexM.xml" xmlpath="drivers"/>
-            <property Type="choicelist" Value="0" id="SWD Mode Settings"/>
-            <property Type="choicelist" Value="0" id="Debug Probe Selection"/>
             <platform XML_version="1.2" id="platform_0">
                 <instance XML_version="1.2" desc="CC3220SF_0" href="devices/CC3220SF.xml" id="CC3220SF_0" xml="CC3220SF.xml" xmlpath="devices"/>
-            <device HW_revision="1" XML_version="1.2" desc="CC3220SF_0" description="SimpleLink(TM) CC3220SF wireless MCU" id="CC3220SF_0" partnum="CC3220SF" simulation="no">
-                    <router HW_revision="1.0" XML_version="1.2" desc="IcePick_C" description="ICEPick_C Router" id="IcePick_C_0" isa="ICEPICK_C">
-                        <subpath desc="subpath_0" id="subpath_0">
-                            <router HW_revision="1.0" XML_version="1.2" description="CS_DAP Router" id="CS_DAP_0" isa="CS_DAP">
-                                <subpath desc="subpath_1" id="subpath_1"/>
-                            </router>
-                        </subpath>
-                    </router>
-                </device>
             </platform>
         </connection>
     </configuration>

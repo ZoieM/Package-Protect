@@ -55,12 +55,12 @@ static const char clientcredentialMQTT_BROKER_ENDPOINT[] = "a134zra8gtikvt-ats.i
 /*
  * Wi-Fi network to join.
  */
-#define clientcredentialWIFI_SSID       "Zoie"
+#define clientcredentialWIFI_SSID       "MOTO2A26"
 
 /*
  * Password needed to join Wi-Fi network.
  */
-#define clientcredentialWIFI_PASSWORD   "z013-p0p"
+#define clientcredentialWIFI_PASSWORD   "d5xz9f4m7p"
 
 /**
  * @brief Security type
