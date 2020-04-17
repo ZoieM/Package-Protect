@@ -756,14 +756,14 @@ void vStartMQTTEchoDemo( void )
     /*-----------------------------------------------------------*/
 
 
-//    /* Create the task that publishes messages to the MQTT broker every five
-//     * seconds.  This task, in turn, creates the task that echoes data received
-//     * from the broker back to the broker. */
-//    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
-//                          "MQTTEcho",                          /* The name to assign to the task being created. */
-//                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
-//                          NULL,                                /* The task parameter is not being used. */
-//                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
-//                          NULL );                              /* Not storing the task's handle. */
+    /* Create the task that publishes messages to the MQTT broker every five
+     * seconds.  This task, in turn, creates the task that echoes data received
+     * from the broker back to the broker. */
+    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
+                          "MQTTEcho",                          /* The name to assign to the task being created. */
+                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
+                          NULL,                                /* The task parameter is not being used. */
+                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
+                          NULL );                              /* Not storing the task's handle. */
 }
 /*-----------------------------------------------------------*/
