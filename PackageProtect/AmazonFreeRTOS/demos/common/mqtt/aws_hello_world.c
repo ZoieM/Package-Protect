@@ -521,47 +521,92 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 void vTestTask (void * pvParameters ) {
     configPRINTF( ( "Entering vTestTask\n" ) ); //saw
     float a;
-  
+
      while(true)
     {
+
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 1);
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
         configPRINTF( ( "1 was written to GPIO pin for Columns 1-4\n" ) ); //saw
 
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+
        //For final version, read from all rows. For now, test 1 row at a time
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))//CHANGE ROW IF NEEDED
         {
             a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1);//CHANGE ROW IF NEEDED
-            configPRINTF( ( "ROW 1 returned true!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+            configPRINTF( ( "ROW 1 TRUE!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
         }
         else
         {
             a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1);//CHANGE ROW IF NEEDED
-            configPRINTF( ( "ROW 1 returned false! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+            configPRINTF( ( "ROW 1 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
         }
+        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2))//CHANGE ROW IF NEEDED
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 2 TRUE!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+               else
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 2 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3))//CHANGE ROW IF NEEDED
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 3 TRUE!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+               else
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 3 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4))//CHANGE ROW IF NEEDED
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 4 TRUE!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+               else
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 4 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+        vTaskDelay(pdMS_TO_TICKS( 5000UL ));
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))//CHANGE ROW IF NEEDED
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 5 TRUE!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
+               else
+               {
+                   a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5);//CHANGE ROW IF NEEDED
+                   configPRINTF( ( "ROW 5 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+               }
        
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
-        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        configPRINTF( ( "0 was written to GPIO pin for Columns 1-4\n" ) ); //saw
-       
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))//CHANGE ROW IF NEEDED
-        {
-            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1);//CHANGE ROW IF NEEDED
-            configPRINTF( ( "ROW 1 returned true!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
-        }
-        else
-        {
-            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1);//CHANGE ROW IF NEEDED
-            configPRINTF( ( "ROW 1 returned false! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
-        }
+//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
+//        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+//        configPRINTF( ( "0 was written to GPIO pin for Columns 1-4\n" ) ); //saw
+//
+//        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
+//        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2))//CHANGE ROW IF NEEDED
+//        {
+//            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
+//            configPRINTF( ( "ROW 2 returned true!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
+//        }
+//        else
+//        {
+//            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
+//            configPRINTF( ( "ROW 2 returned false! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
+//        }
 
     }
 }
@@ -595,6 +640,7 @@ void vStartMQTTEchoDemo( void )
     xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
     end examples*/
 
+    GPIO_init();
     xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
 
     /*Package Protect: END FreeRTOS Creating Tasks*/
