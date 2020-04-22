@@ -532,11 +532,15 @@ void vReadButtonPressed (void * pvParameters ) {
     //Pseudocode
 
     //Initialization
-    //bool buttonFound = true, sendSemaphore = false;
+    bool buttonFound = true, sendSemaphore = false;
 
     while(true)
     {
         //Write high/1 to all columns
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 1);
 
         //if(sendSemaphore)
             //sendSemaphore = false;
@@ -544,31 +548,150 @@ void vReadButtonPressed (void * pvParameters ) {
 
         vTaskDelay(pdMS_TO_TICKS( 250UL ));   //Change this to be how often we want to poll for buttons
         //if a button is pressed //if (read row 2 | read row 3 |read row 4 | read row 5)
-            //buttonFound = false;
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))
+            buttonFound = false;
             //sendSemaphore = true;
 
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
+
         //while(!buttonFound)
+        while(!buttonFound){
             //figure out which button was pressed by turning on each column one at a time and reading each until read true
                 //Write 0/low to all columns
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
                 //Write 1/high to column 1
-                    //if row 2 is true, set LastButtonPressed =  1 and buttonFound = true and break
-                    //if row 3 is true, set LastButtonPressed =  4 and buttonFound = true and break
-                    //if row 4 is true, set LastButtonPressed =  7 and buttonFound = true and break
-                ///Write 0/low to column 1 and Write 1/high to column 2
-                    //if row 2 is true, set LastButtonPressed =  2 and buttonFound = true and break
-                    //if row 3 is true, set LastButtonPressed =  5 and buttonFound = true and break
-                    //if row 4 is true, set LastButtonPressed =  8 and buttonFound = true and break
-                    //if row 5 is true, set LastButtonPressed =  0 and buttonFound = true and break
-               //Write 0/low to column 2 and Write 1/high to column 3
-                    //if row 2 is true, set LastButtonPressed =  3 and buttonFound = true and break
-                    //if row 3 is true, set LastButtonPressed =  6 and buttonFound = true and break
-                    //if row 4 is true, set LastButtonPressed =  9 and buttonFound = true and break
-                //Write 0/low to column 3 and Write 1/high to column 4
-                    //if row 3 is true, set LastButtonPressed =  DeleteButton (11) and buttonFound = true and break
-                    //if row 4 is true, set LastButtonPressed =  EnterButton(10) and buttonFound = true and break
-                //LastButtonPressed =  UnknownButton (-1) and buttonFound = true and sendSemaphore = false and break
-                configPRINTF( ( "buttonFound was %d", LastButtonPressed ) );
 
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+                    //if row 2 is true, set LastButtonPressed =  1 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 1;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 3 is true, set LastButtonPressed =  4 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 4;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  7 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 7;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                ///Write 0/low to column 1 and Write 1/high to column 2
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
+
+                 //if row 2 is true, set LastButtonPressed =  2 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 2;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                 //if row 3 is true, set LastButtonPressed =  5 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 5;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                //if row 4 is true, set LastButtonPressed =  8 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 8;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 5 is true, set LastButtonPressed =  0 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
+                    LastButtonPressed = 0;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                //Write 0/low to column 2 and Write 1/high to column 3
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
+
+                    //if row 2 is true, set LastButtonPressed =  3 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 3;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 3 is true, set LastButtonPressed =  6 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 6;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  9 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 9;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                //Write 0/low to column 3 and Write 1/high to column 4
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 1);
+                    //if row 3 is true, set LastButtonPressed =  DeleteButton (11) and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = DeleteButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  EnterButton(10) and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
+                    LastButtonPressed = EnterButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                else{
+                    //LastButtonPressed =  UnknownButton (-1) and buttonFound = true and sendSemaphore = false and break
+                    LastButtonPressed = UnknownButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d ", LastButtonPressed ) );
+
+                    //sendSemaphore = false;
+                    break;
+                }
+
+        }
+
+        //configPRINTF( ( "buttonFound was %d", LastButtonPressed ) );
 
     }
 }
