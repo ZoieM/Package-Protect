@@ -121,6 +121,14 @@
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Global Variables*/
 //example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+
+#define EnterButton         10
+#define DeleteButton        11
+#define UnknownButton       -1
+
+static uint16_t LastButtonPressed = -1;
+
+
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -518,6 +526,53 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
 
+void vReadButtonPressed (void * pvParameters ) {
+    configPRINTF( ( "Entering vReadButtonPressed\n" ) );
+
+    //Pseudocode
+
+    //Initialization
+    //bool buttonFound = true, sendSemaphore = false;
+
+    while(true)
+    {
+        //Write high/1 to all columns
+
+        //if(sendSemaphore)
+            //sendSemaphore = false;
+            //Give Semaphore for xButtonPressedSem
+
+        vTaskDelay(pdMS_TO_TICKS( 250UL ));   //Change this to be how often we want to poll for buttons
+        //if a button is pressed //if (read row 2 | read row 3 |read row 4 | read row 5)
+            //buttonFound = false;
+            //sendSemaphore = true;
+
+        //while(!buttonFound)
+            //figure out which button was pressed by turning on each column one at a time and reading each until read true
+                //Write 0/low to all columns
+                //Write 1/high to column 1
+                    //if row 2 is true, set LastButtonPressed =  1 and buttonFound = true and break
+                    //if row 3 is true, set LastButtonPressed =  4 and buttonFound = true and break
+                    //if row 4 is true, set LastButtonPressed =  7 and buttonFound = true and break
+                ///Write 0/low to column 1 and Write 1/high to column 2
+                    //if row 2 is true, set LastButtonPressed =  2 and buttonFound = true and break
+                    //if row 3 is true, set LastButtonPressed =  5 and buttonFound = true and break
+                    //if row 4 is true, set LastButtonPressed =  8 and buttonFound = true and break
+                    //if row 5 is true, set LastButtonPressed =  0 and buttonFound = true and break
+               //Write 0/low to column 2 and Write 1/high to column 3
+                    //if row 2 is true, set LastButtonPressed =  3 and buttonFound = true and break
+                    //if row 3 is true, set LastButtonPressed =  6 and buttonFound = true and break
+                    //if row 4 is true, set LastButtonPressed =  9 and buttonFound = true and break
+                //Write 0/low to column 3 and Write 1/high to column 4
+                    //if row 3 is true, set LastButtonPressed =  DeleteButton (11) and buttonFound = true and break
+                    //if row 4 is true, set LastButtonPressed =  EnterButton(10) and buttonFound = true and break
+                //LastButtonPressed =  UnknownButton (-1) and buttonFound = true and sendSemaphore = false and break
+                configPRINTF( ( "buttonFound was %d", LastButtonPressed ) );
+
+
+    }
+}
+
 void vTestTask (void * pvParameters ) {
     configPRINTF( ( "Entering vTestTask\n" ) ); //saw
     float a;
@@ -525,6 +580,7 @@ void vTestTask (void * pvParameters ) {
      while(true)
     {
 
+        //GPIO pin testing
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
@@ -589,24 +645,6 @@ void vTestTask (void * pvParameters ) {
                    configPRINTF( ( "ROW 5 FALSE! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
                }
        
-//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
-//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
-//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
-//        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
-//        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-//        configPRINTF( ( "0 was written to GPIO pin for Columns 1-4\n" ) ); //saw
-//
-//        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-//        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2))//CHANGE ROW IF NEEDED
-//        {
-//            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
-//            configPRINTF( ( "ROW 2 returned true!\n" ) );//CHANGE PRINT STATEMENT IF NEEDED
-//        }
-//        else
-//        {
-//            a = GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2);//CHANGE ROW IF NEEDED
-//            configPRINTF( ( "ROW 2 returned false! value found is %f\n", a) );//CHANGE PRINT STATEMENT IF NEEDED
-//        }
 
     }
 }
@@ -641,7 +679,8 @@ void vStartMQTTEchoDemo( void )
     end examples*/
 
     GPIO_init();
-    xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
+    //xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
+    xTaskCreate(vReadButtonPressed, "Task for Reading Button Pressed.", 512, NULL, 2, NULL);
 
     /*Package Protect: END FreeRTOS Creating Tasks*/
     /*-----------------------------------------------------------*/
