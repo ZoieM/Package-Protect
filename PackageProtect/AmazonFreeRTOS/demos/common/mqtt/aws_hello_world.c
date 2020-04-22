@@ -126,7 +126,7 @@
 #define DeleteButton        11
 #define UnknownButton       -1
 
-static uint16_t LastButtonPressed = -1;
+volatile uint16_t LastButtonPressed = -1;
 
 
 /*Package Protect: END Global Variables*/
