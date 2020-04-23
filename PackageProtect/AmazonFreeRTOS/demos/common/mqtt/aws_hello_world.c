@@ -204,6 +204,44 @@ unsigned char lcdContrast(unsigned char val)
     y |= lcdSpecialFunction(CONST_SPL_FUNC_LCD_CONTRAST);
     return y;
 }
+
+//clear the LCD Screen
+void clear_screen()
+{
+    unsigned char buf[CONST_LAST_REG_ADDR+1];
+    unsigned char y;
+    //Erase
+    for(y = 0; y <= CONST_LCD_NUM_ROWS; y++)
+    {   sprintf((char*) buf, " ");
+        lcdRowWrite(y,buf);
+    }
+}
+//display the ERROR screen
+void display_error_screen()
+{
+    clear_screen();
+    unsigned char buf[CONST_LAST_REG_ADDR+1];
+    sprintf((char*)buf, "ERROR");
+    lcdRowWrite(1,buf);
+    sprintf((char*)buf, "Incorrect Pin");
+    lcdRowWrite(2,buf);
+}
+//display "box unlocked" screen
+void display_box_unlocked_screen()
+{
+    clear_screen();
+    unsigned char buf[CONST_LAST_REG_ADDR+1];
+    sprintf((char*)buf, "BOX UNLOCKED");
+    lcdRowWrite(1,buf);
+}
+//display "enter pin" screen
+void display_enter_pin_screen()
+{
+    clear_screen();
+    unsigned char buf[CONST_LAST_REG_ADDR+1];
+    sprintf((char*)buf, "ENTER PIN:");
+    lcdRowWrite(1,buf);
+}
 /*LCD: END Functions and Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -669,9 +707,6 @@ void vTestTask (void * pvParameters ) {
 }
 
 void vLCDtask (void * pvParameters ) {
-    unsigned char x = 0, y;
-    unsigned char buf[CONST_LAST_REG_ADDR+1];
-
     configPRINTF( ( "UART_init() function called \r\n" ) );
 
     /* Create a UART with data processing off. */
@@ -692,31 +727,16 @@ void vLCDtask (void * pvParameters ) {
     }
 
     while(1){
-        /** some example code that changes contrast and writes to each row **/
-
-        //Test Contrast
-        for(y = 0; y <= CONST_MAX_LCD_CONTRAST; y+=10)
-        {   x |= lcdContrast(y);
-
-            sprintf((char*)buf, "Contrast = %d/%d", y,CONST_MAX_LCD_CONTRAST);
-            x |= lcdRowWrite(4,buf);
-            //add a delay here for readability
-        }
+        //setting contrast
+        lcdContrast(10);
 
 //        lcdSpecialFunction(CONST_SPL_FUNC_CPU_RESET);//Hard Reset the LCD
-
-        //Erase
-        for(y = 0; y <= CONST_LCD_NUM_ROWS; y++)
-        {   sprintf((char*) buf, " ");
-            x |= lcdRowWrite(y,buf);
-        }
-        vTaskDelay(1000);
-        //Write
-        for(y = 0; y <= CONST_LCD_NUM_ROWS; y++)
-        {
-            sprintf((char*)buf, "Row %d",y);
-            x |= lcdRowWrite(y,buf);
-        }
+        display_error_screen();
+        vTaskDelay(5000);
+        display_box_unlocked_screen();
+        vTaskDelay(5000);
+        display_enter_pin_screen();
+        vTaskDelay(10000);
     }
 
 }
