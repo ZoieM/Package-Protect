@@ -89,19 +89,37 @@ typedef enum CC3220SF_LAUNCHXL_CryptoName {
  *  @brief  Enum of GPIO names on the CC3220SF_LAUNCHXL dev board
  */
 typedef enum CC3220SF_LAUNCHXL_GPIOName {
-    CC3220SF_LAUNCHXL_GPIO_SW2 = 0,
-    CC3220SF_LAUNCHXL_GPIO_SW3,
-    CC3220SF_LAUNCHXL_GPIO_LED_D7,
+    /* GPIO for mailbox project */
+    CC3220SF_LAUNCHXL_GPIO_LOCK,
 
-    /*
-     *  CC3220SF_LAUNCHXL_GPIO_LED_D5 and CC3220SF_LAUNCHXL_GPIO_LED_D6 are shared with the
-     *  I2C and PWM peripherals. In order for those examples to work, these
-     *  LEDs are  taken out of gpioPinCOnfig[]
-     */
-    CC3220SF_LAUNCHXL_GPIO_LED_D6,
-    CC3220SF_LAUNCHXL_GPIO_LED_D5,
+    CC3220SF_LAUNCHXL_GPIO_KEYPAD_PRESSED,
 
-    CC3220SF_LAUNCHXL_GPIOCOUNT
+    CC3220SF_LAUNCHXL_GPIO_COL1,
+    CC3220SF_LAUNCHXL_GPIO_COL2,
+    CC3220SF_LAUNCHXL_GPIO_COL3,
+    CC3220SF_LAUNCHXL_GPIO_COL4,
+
+    CC3220SF_LAUNCHXL_GPIO_ROW1,
+    CC3220SF_LAUNCHXL_GPIO_ROW2,
+    CC3220SF_LAUNCHXL_GPIO_ROW3,
+    CC3220SF_LAUNCHXL_GPIO_ROW4,
+    CC3220SF_LAUNCHXL_GPIO_ROW5,
+
+    CC3220SF_LAUNCHXL_GPIOCOUNT //Not a pin, just a useful number
+
+//    CC3220SF_LAUNCHXL_GPIO_SW2 = 0,
+//    CC3220SF_LAUNCHXL_GPIO_SW3,
+//    CC3220SF_LAUNCHXL_GPIO_LED_D7,
+//
+//    /*
+//     *  CC3220SF_LAUNCHXL_GPIO_LED_D5 and CC3220SF_LAUNCHXL_GPIO_LED_D6 are shared with the
+//     *  I2C and PWM peripherals. In order for those examples to work, these
+//     *  LEDs are  taken out of gpioPinCOnfig[]
+//     */
+//    CC3220SF_LAUNCHXL_GPIO_LED_D6,
+//    CC3220SF_LAUNCHXL_GPIO_LED_D5,
+//
+//    CC3220SF_LAUNCHXL_GPIOCOUNT
 } CC3220SF_LAUNCHXL_GPIOName;
 
 /*!
