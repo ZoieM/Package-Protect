@@ -82,10 +82,18 @@
 //Derek's includes
 #include "stdint.h"
 #include "stddef.h"
+#include "semphr.h"
 /*Package Protect: END Includes*/
 /*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
+//KEYPAD Global Variables
+#define EnterButton         10
+#define DeleteButton        11
+#define UnknownButton       65535
+
+volatile uint16_t LastButtonPressed = 65535;
+
 /*LCD: BEGIN Functions and Global Variables*/
 #define CONST_LCD_UART_REG_WRITE (0x80)
 #define CONST_LCD_WIDTH 20
@@ -285,6 +293,19 @@ void display_enter_pin_screen()
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Global Variables*/
 //example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+#define EMPTY_PIN 1
+volatile uint16_t saved_pin;
+volatile uint16_t current_pin;
+volatile uint8_t correct_pin_entered;
+SemaphoreHandle_t xBoxOpenSem;
+SemaphoreHandle_t xBoxDoneSem;
+SemaphoreHandle_t xCollectPinSem;
+SemaphoreHandle_t xPinEnteredSem;
+SemaphoreHandle_t xPinCheckedSem;
+SemaphoreHandle_t xBoxUnlockedScreenSem;
+SemaphoreHandle_t xBoxErrorScreenSem;
+SemaphoreHandle_t xDisplayNewNumberSem;
+SemaphoreHandle_t xButtonPressedSem;
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 
@@ -676,33 +697,341 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 }
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN Helper Functions*/
+static int compare_pin(uint16_t pin_1, uint16_t pin_2)
+{
+    if (pin_1 == pin_2)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+static uint16_t insert_into_pin(uint16_t pin, uint16_t value)
+{
+    // Ensure we dont add a number if it's already four digits.
+    configPRINTF( ( "Entering insert into pin. pin / 10000 = %d\r\n", pin/10000 ) );
+    if (pin / 10000 < 1)
+    {
+        pin *= 10;
+        pin += value;
+    }
+    configPRINTF( ( "Leaving insert into pin. pin = %d\r\n", pin ) );
+    current_pin = pin;
+    return pin;
+}
+
+static uint16_t remove_one_from_pin(uint16_t pin)
+{
+    // Ensure we don't remove if there is no pin to begin with.
+    if (pin != EMPTY_PIN)
+    {
+        pin /= 10;
+    }
+    return pin;
+}
 /*Package Protect: END Helper Functions*/
 /*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
+void vOpenBoxTask(void *pvParameters)
+{
+    while (1)
+    {
+        if (xSemaphoreTake(xBoxOpenSem, portMAX_DELAY))
+        {
+            configPRINTF( ( "Unlocking box...\r\n" ) );
+            // insert driver here to unlock
+            configPRINTF( ( "Box Unlocked.\r\n" ) );
+            xSemaphoreGive(xBoxDoneSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100UL));
+    }
+}
 
-void vTestTask (void * pvParameters ) {
-    configPRINTF( ( "Entering vTestTask\n" ) );
+void vReadButtonPressed (void * pvParameters ) {
+    configPRINTF( ( "Entering vReadButtonPressed\r\n" ) );
 
-    //Write to column 1
-    GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
-    vTaskDelay(pdMS_TO_TICKS( 100UL ));
-    configPRINTF( ( "1 was written to GPIO pin for Column 1\n" ) );
+    //Pseudocode
 
-    //Read from row 1 10 times
+    //Initialization
+    bool buttonFound = true;
+    bool sendSemaphore = false;
+
     while(true)
     {
-        vTaskDelay(pdMS_TO_TICKS( 1000UL ));
-        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW1))
+        //Write high/1 to all columns
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
+        GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 1);
+
+        if(sendSemaphore)
         {
-            configPRINTF( ( "ROW 1 returned true!\n" ) );
-        }
-        else
-        {
-            configPRINTF( ( "ROW 1 returned false!\n" ) );
+            configPRINTF( ( "Giving the Semaphore\r\n" ) );
+            xSemaphoreGive(xButtonPressedSem);
+            sendSemaphore = false;
         }
 
+        vTaskDelay(pdMS_TO_TICKS( 250UL ));   //Change this to be how often we want to poll for buttons
+        //if a button is pressed //if (read row 2 | read row 3 |read row 4 | read row 5)
+        if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))
+        {
+            buttonFound = false;
+            sendSemaphore = true;
+        }
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+//         GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
+
+        //while(!buttonFound)
+        while(!buttonFound){
+            //figure out which button was pressed by turning on each column one at a time and reading each until read true
+                //Write 0/low to all columns
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 0);
+                //Write 1/high to column 1
+
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 1);
+                    //if row 2 is true, set LastButtonPressed =  1 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 1;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 3 is true, set LastButtonPressed =  4 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 4;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  7 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 7;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                ///Write 0/low to column 1 and Write 1/high to column 2
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL1, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 1);
+
+                 //if row 2 is true, set LastButtonPressed =  2 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 2;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                 //if row 3 is true, set LastButtonPressed =  5 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 5;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                //if row 4 is true, set LastButtonPressed =  8 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 8;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 5 is true, set LastButtonPressed =  0 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
+                    LastButtonPressed = 0;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                //Write 0/low to column 2 and Write 1/high to column 3
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL2, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 1);
+
+                    //if row 2 is true, set LastButtonPressed =  3 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
+                    LastButtonPressed = 3;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 3 is true, set LastButtonPressed =  6 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
+                    LastButtonPressed = 6;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  9 and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = 9;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                //Write 0/low to column 3 and Write 1/high to column 4
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL3, 0);
+                GPIO_write(CC3220SF_LAUNCHXL_GPIO_COL4, 1);
+                    //if row 3 is true, set LastButtonPressed =  DeleteButton (11) and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
+                    LastButtonPressed = DeleteButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+                    //if row 4 is true, set LastButtonPressed =  EnterButton(10) and buttonFound = true and break
+                if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
+                    LastButtonPressed = EnterButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    break;
+                }
+
+                else{
+                    //LastButtonPressed =  UnknownButton (-1) and buttonFound = true and sendSemaphore = false and break
+                    LastButtonPressed = UnknownButton;
+                    buttonFound = true;
+                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+
+                    sendSemaphore = false;
+                    break;
+                }
+
+        }
+
+        //configPRINTF( ( "buttonFound was %d\r\n", LastButtonPressed ) );
+
+    }
+}
+
+
+static void vKeypadTask(void *pvParameters)
+{
+    int8_t number_entered = 1;
+    int8_t delete_button_pressed = 1;
+    int8_t enter_pressed = 1;
+    current_pin = EMPTY_PIN;
+    while (1)
+    {
+//        xSemaphoreTake(xCollectPinSem, portMAX_DELAY);
+
+        // Add drivers to check which button was pressed
+        if (xSemaphoreTake(xButtonPressedSem, portMAX_DELAY) == pdTRUE)
+        {
+            configPRINTF( ( "current pin is :0  lol haha-> %d\r\n ", current_pin ) );
+            if (LastButtonPressed <= 9)
+            {
+                configPRINTF( ( "i am kepad task the button pressed was  %d\r\n ", LastButtonPressed ) );
+                insert_into_pin(current_pin, LastButtonPressed);
+                /*
+                 * If it is a number and we have less than 4, put the value in
+                 * a queue or other data structure. (Store int pressed,
+                 * update count, tell screen to type it). While we have 4 numbers,
+                 * ignore any future numbers pressed.
+                */
+               xSemaphoreGive(xDisplayNewNumberSem);
+            }
+            if (LastButtonPressed == DeleteButton)
+            {
+                configPRINTF( ( "i am kepad task you pressed delt %d\r\n ", LastButtonPressed ) );
+                current_pin = remove_one_from_pin(current_pin);
+                xSemaphoreGive(xDisplayNewNumberSem);
+            }
+            if (LastButtonPressed == EnterButton)
+            {
+                configPRINTF( ( "i am kepad task you pressed entr  %d\r\n ", LastButtonPressed ) );
+                xSemaphoreGive(xPinEnteredSem);
+                xSemaphoreTake(xPinCheckedSem, portMAX_DELAY);
+                if(compare_pin(saved_pin, current_pin))
+                {
+                    configPRINTF( ( "it was right woooooo \r\n") );
+                    xSemaphoreGive(xBoxUnlockedScreenSem);
+                    current_pin = EMPTY_PIN;
+                }
+                else
+                {
+                    configPRINTF( ( "nima \r\n") );
+                    xSemaphoreGive(xBoxErrorScreenSem);
+                    current_pin = EMPTY_PIN;
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
+static void vScreenTask(void *pvParameters)
+{
+    // Add driver code to display "Enter Pin"
+    xSemaphoreGive(xCollectPinSem);
+    while (1)
+    {
+        if (xSemaphoreTake(xDisplayNewNumberSem, portMAX_DELAY))
+        {
+            // Add driver to show most recently entered number on screen
+            xSemaphoreGive(xCollectPinSem);
+        }
+        if (xSemaphoreTake(xBoxErrorScreenSem, portMAX_DELAY))
+        {
+            // Add screen driver code show error screen here
+            vTaskDelay(pdMS_TO_TICKS(3000UL));
+            // Add screen driver code to show clear collect pin screen
+            xSemaphoreGive(xCollectPinSem);
+        }
+        if (xSemaphoreTake(xBoxUnlockedScreenSem, portMAX_DELAY))
+        {
+            // Add driver to show box is unlocked
+            vTaskDelay(pdMS_TO_TICKS(1000UL));
+            xSemaphoreGive(xCollectPinSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
+static void vCheckPinTask(void *pvParameters)
+{
+    while (1)
+    {
+        if(xSemaphoreTake(xPinEnteredSem, portMAX_DELAY)) {
+            if (compare_pin(current_pin, saved_pin))
+            {
+                correct_pin_entered = 1;
+                configPRINTF( ( "The pin was correct!" ) );
+            }
+            else
+            {
+                correct_pin_entered = 0;
+                configPRINTF( ( "The pin was incorrect!" ) );
+            }
+            if (correct_pin_entered)
+            {
+                xSemaphoreGive(xBoxOpenSem);
+                xSemaphoreTake(xBoxDoneSem, portMAX_DELAY);
+            }
+            xSemaphoreGive(xPinCheckedSem);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
     }
 }
 
@@ -740,6 +1069,16 @@ void vLCDtask (void * pvParameters ) {
     }
 
 }
+void vTestTask (void * pvParameters ) {
+    while(true)
+    {
+        if(xSemaphoreTake(xButtonPressedSem, portMAX_DELAY) == pdTRUE)
+        {
+            configPRINTF( ( "Collected the Semaphore\r\n" ) );
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL));
+    }
+}
 /*Package Protect: END FreeRTOS Task Definitions*/
 /*-----------------------------------------------------------*/
 
@@ -747,8 +1086,22 @@ void vStartMQTTEchoDemo( void )
 {
     /*-----------------------------------------------------------*/
     /*Package Protect: BEGIN Creating Semaphores*/
-    //example: xBoxOpenSem = xSemaphoreCreateBinary(); //Semaphore for controlling the lock
+    xBoxOpenSem = xSemaphoreCreateBinary();
+    xBoxDoneSem = xSemaphoreCreateBinary();
+    xCollectPinSem = xSemaphoreCreateBinary();
+    xPinEnteredSem = xSemaphoreCreateBinary();
+    xPinCheckedSem = xSemaphoreCreateBinary();
+    xBoxUnlockedScreenSem = xSemaphoreCreateBinary();
+    xBoxErrorScreenSem = xSemaphoreCreateBinary();
+    xDisplayNewNumberSem = xSemaphoreCreateBinary();
+    xButtonPressedSem = xSemaphoreCreateBinary();
     /*Package Protect: END Creating Semaphores*/
+
+    /*Package Protect: Initialize pin queue*/
+    current_pin = EMPTY_PIN;
+    saved_pin = 11234;
+    correct_pin_entered = 0;
+    /*Package Protect: END Initialize pin queue*/
     /*-----------------------------------------------------------*/
 
     //configPRINTF( ( "Creating MQTT Echo Task...\r\n" ) );
@@ -764,13 +1117,22 @@ void vStartMQTTEchoDemo( void )
     /*-----------------------------------------------------------*/
     /*Package Protect: BEGIN Creating FreeRTOS Tasks*/
     configPRINTF( ( "Starting Tasks for Package Protect\r\n" ) );
+
+    GPIO_init();
     /*begin examples:
     xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
     xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
     end examples*/
+    xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
+    xTaskCreate(vKeypadTask, "Keypad", 512, NULL, 2, NULL);
+    // xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
+    xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
 
-    xTaskCreate(vTestTask, "Task for Testing GPIO Read and Write", 512, NULL, 2, NULL);
-    xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
+
+    xTaskCreate(vReadButtonPressed, "Task for Reading Button Pressed.", 512, NULL, 2, NULL);
+   // xTaskCreate(vTestTask, "Task for Debugging", 512, NULL, 2, NULL);
+//    xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
+
 
     /*Package Protect: END FreeRTOS Creating Tasks*/
     /*-----------------------------------------------------------*/
@@ -779,11 +1141,11 @@ void vStartMQTTEchoDemo( void )
     /* Create the task that publishes messages to the MQTT broker every five
      * seconds.  This task, in turn, creates the task that echoes data received
      * from the broker back to the broker. */
-    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
-                          "MQTTEcho",                          /* The name to assign to the task being created. */
-                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
-                          NULL,                                /* The task parameter is not being used. */
-                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
-                          NULL );                              /* Not storing the task's handle. */
+//    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
+//                          "MQTTEcho",                          /* The name to assign to the task being created. */
+//                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
+//                          NULL,                                /* The task parameter is not being used. */
+//                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
+//                          NULL );                              /* Not storing the task's handle. */
 }
 /*-----------------------------------------------------------*/
