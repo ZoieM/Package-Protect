@@ -984,7 +984,7 @@ static void vKeypadTask(void *pvParameters)
 }
 static void vScreenTask(void *pvParameters)
 {
-    // Add driver code to display "Enter Pin"
+    display_enter_pin_screen();
     xSemaphoreGive(xCollectPinSem);
     while (1)
     {
@@ -995,14 +995,14 @@ static void vScreenTask(void *pvParameters)
         }
         if (xSemaphoreTake(xBoxErrorScreenSem, portMAX_DELAY))
         {
-            // Add screen driver code show error screen here
+            display_error_screen();
             vTaskDelay(pdMS_TO_TICKS(3000UL));
-            // Add screen driver code to show clear collect pin screen
+            display_enter_pin_screen();
             xSemaphoreGive(xCollectPinSem);
         }
         if (xSemaphoreTake(xBoxUnlockedScreenSem, portMAX_DELAY))
         {
-            // Add driver to show box is unlocked
+            display_box_unlocked_screen();
             vTaskDelay(pdMS_TO_TICKS(1000UL));
             xSemaphoreGive(xCollectPinSem);
         }
