@@ -725,18 +725,37 @@ void vLCDtask (void * pvParameters ) {
         /* UART_open() failed */
         while (1);
     }
+    //setting contrast
+    lcdContrast(10);
 
+    display_enter_pin_screen();
+    xSemaphoreGive(xCollectPinSem);
     while(1){
-        //setting contrast
-        lcdContrast(10);
-
 //        lcdSpecialFunction(CONST_SPL_FUNC_CPU_RESET);//Hard Reset the LCD
-        display_error_screen();
-        vTaskDelay(5000);
-        display_box_unlocked_screen();
-        vTaskDelay(5000);
-        display_enter_pin_screen();
-        vTaskDelay(10000);
+        if(xSemaphoreTake(xDisplayNewNumberSem, 5))
+        {
+            /*
+             * TO DO:
+             * - Take pin number from linked list and display on screen
+             */
+
+        }
+        if(xSemaphoreTake(xBoxUnlockedScreenSem, 5))
+        {
+            //display box unlocked
+            display_box_unlocked_screen();
+            vTaskDelay(10000);
+            display_enter_pin_screen();
+            xSemaphoreGive(xCollectPinSem);
+        }
+        if(xSemaphoreTake(xBoxErrorScreenSem, 5))
+        {
+            //display error
+            display_error_screen();
+            vTaskDelay(3000);
+            display_enter_pin_screen();
+            xSemaphoreGive(xCollectPinSem);
+        }
     }
 
 }
