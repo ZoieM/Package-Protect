@@ -737,7 +737,7 @@ static uint16_t remove_one_from_pin(uint16_t pin)
 
 /*-----------------------------------------------------------*/
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
-static void vOpenBoxTask(void *pvParameters)
+void vOpenBoxTask(void *pvParameters)
 {
     while (1)
     {
@@ -746,7 +746,7 @@ static void vOpenBoxTask(void *pvParameters)
             configPRINTF( ( "Unlocking box...\r\n" ) );
             // insert driver here to unlock
             configPRINTF( ( "Box Unlocked.\r\n" ) );
-            xSemaphoreGive(xBoxOpenSem);
+            xSemaphoreGive(xBoxDoneSem);
         }
         vTaskDelay(pdMS_TO_TICKS(100UL));
     }
@@ -1017,10 +1017,12 @@ static void vCheckPinTask(void *pvParameters)
             if (compare_pin(current_pin, saved_pin))
             {
                 correct_pin_entered = 1;
+                configPRINTF( ( "The pin was correct!" ) );
             }
             else
             {
                 correct_pin_entered = 0;
+                configPRINTF( ( "The pin was incorrect!" ) );
             }
             if (correct_pin_entered)
             {
@@ -1121,10 +1123,10 @@ void vStartMQTTEchoDemo( void )
     xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
     xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
     end examples*/
-    // xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
+    xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
     xTaskCreate(vKeypadTask, "Keypad", 512, NULL, 2, NULL);
     // xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
-    // xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
+    xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
 
 
     xTaskCreate(vReadButtonPressed, "Task for Reading Button Pressed.", 512, NULL, 2, NULL);
