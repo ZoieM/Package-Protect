@@ -85,7 +85,24 @@
 #include "semphr.h"
 /*Package Protect: END Includes*/
 /*-----------------------------------------------------------*/
-
+/*-----------------------------------------------------------*/
+/*Package Protect: BEGIN Global Variables*/
+//example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
+#define EMPTY_PIN 1
+volatile uint16_t saved_pin;
+volatile uint16_t current_pin;
+volatile uint8_t correct_pin_entered;
+SemaphoreHandle_t xBoxOpenSem;
+SemaphoreHandle_t xBoxDoneSem;
+SemaphoreHandle_t xCollectPinSem;
+SemaphoreHandle_t xPinEnteredSem;
+SemaphoreHandle_t xPinCheckedSem;
+SemaphoreHandle_t xBoxUnlockedScreenSem;
+SemaphoreHandle_t xBoxErrorScreenSem;
+SemaphoreHandle_t xDisplayNewNumberSem;
+SemaphoreHandle_t xButtonPressedSem;
+/*Package Protect: END Global Variables*/
+/*-----------------------------------------------------------*/
 /*-----------------------------------------------------------*/
 //KEYPAD Global Variables
 #define EnterButton         10
@@ -247,7 +264,17 @@ void display_enter_pin_screen()
 {
     clear_screen();
     unsigned char buf[CONST_LAST_REG_ADDR+1];
-    sprintf((char*)buf, "ENTER PIN:");
+    if(current_pin >= 10000) {
+        sprintf((char*)buf, "ENTER PIN: %d", current_pin % 10000);
+    } else if(current_pin >= 1000) {
+        sprintf((char*)buf, "ENTER PIN: %d", current_pin % 1000);
+    } else if(current_pin >= 100) {
+        sprintf((char*)buf, "ENTER PIN: %d", current_pin % 100);
+    } else if(current_pin >= 10) {
+        sprintf((char*)buf, "ENTER PIN: %d", current_pin % 10);
+    } else {
+        sprintf((char*)buf, "ENTER PIN:");
+    }
     lcdRowWrite(1,buf);
 }
 /*LCD: END Functions and Global Variables*/
@@ -290,24 +317,6 @@ void display_enter_pin_screen()
  */
 #define echoDONT_BLOCK           ( ( TickType_t ) 0 )
 
-/*-----------------------------------------------------------*/
-/*Package Protect: BEGIN Global Variables*/
-//example: SemaphoreHandle_t xBoxOpenSem //Semaphore for controlling the lock
-#define EMPTY_PIN 1
-volatile uint16_t saved_pin;
-volatile uint16_t current_pin;
-volatile uint8_t correct_pin_entered;
-SemaphoreHandle_t xBoxOpenSem;
-SemaphoreHandle_t xBoxDoneSem;
-SemaphoreHandle_t xCollectPinSem;
-SemaphoreHandle_t xPinEnteredSem;
-SemaphoreHandle_t xPinCheckedSem;
-SemaphoreHandle_t xBoxUnlockedScreenSem;
-SemaphoreHandle_t xBoxErrorScreenSem;
-SemaphoreHandle_t xDisplayNewNumberSem;
-SemaphoreHandle_t xButtonPressedSem;
-/*Package Protect: END Global Variables*/
-/*-----------------------------------------------------------*/
 
 /**
  * @brief Implements the task that connects to and then publishes messages to the
@@ -776,7 +785,7 @@ void vReadButtonPressed (void * pvParameters ) {
             sendSemaphore = false;
         }
 
-        vTaskDelay(pdMS_TO_TICKS( 250UL ));   //Change this to be how often we want to poll for buttons
+        vTaskDelay(pdMS_TO_TICKS( 500UL ));   //Change this to be how often we want to poll for buttons
         //if a button is pressed //if (read row 2 | read row 3 |read row 4 | read row 5)
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))
         {
@@ -930,15 +939,14 @@ void vReadButtonPressed (void * pvParameters ) {
 
 static void vKeypadTask(void *pvParameters)
 {
-    int8_t number_entered = 1;
-    int8_t delete_button_pressed = 1;
-    int8_t enter_pressed = 1;
     current_pin = EMPTY_PIN;
     while (1)
     {
-//        xSemaphoreTake(xCollectPinSem, portMAX_DELAY);
-
+       configPRINTF( ( "KeypadTask waiting for collectpin Semaphore\r\n" ) );
+       xSemaphoreTake(xCollectPinSem, portMAX_DELAY);
+       configPRINTF( ( "KeypadTask received collectpin Semaphore\r\n" ) );
         // Add drivers to check which button was pressed
+
         if (xSemaphoreTake(xButtonPressedSem, portMAX_DELAY) == pdTRUE)
         {
             configPRINTF( ( "current pin is :0  lol haha-> %d\r\n ", current_pin ) );
@@ -952,6 +960,7 @@ static void vKeypadTask(void *pvParameters)
                  * update count, tell screen to type it). While we have 4 numbers,
                  * ignore any future numbers pressed.
                 */
+                configPRINTF( ( "finished inserting into pin\r\n" ) );
                xSemaphoreGive(xDisplayNewNumberSem);
             }
             if (LastButtonPressed == DeleteButton)
@@ -969,44 +978,49 @@ static void vKeypadTask(void *pvParameters)
                 {
                     configPRINTF( ( "it was right woooooo \r\n") );
                     xSemaphoreGive(xBoxUnlockedScreenSem);
-                    current_pin = EMPTY_PIN;
                 }
                 else
                 {
                     configPRINTF( ( "nima \r\n") );
                     xSemaphoreGive(xBoxErrorScreenSem);
-                    current_pin = EMPTY_PIN;
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(1000UL));
+        vTaskDelay(pdMS_TO_TICKS(300UL));
     }
 }
 static void vScreenTask(void *pvParameters)
 {
-    display_enter_pin_screen();
+    configPRINTF( ( "Entering screentask\r\n" ) );
+//    configPRINTF( ( "Giving xcollectpinsem\r\n" ) );
     xSemaphoreGive(xCollectPinSem);
     while (1)
     {
-        if (xSemaphoreTake(xDisplayNewNumberSem, portMAX_DELAY))
+        configPRINTF( ( "screentask is waiting...\r\n" ) );
+        if (xSemaphoreTake(xDisplayNewNumberSem, pdMS_TO_TICKS(300UL)))
         {
-            // Add driver to show most recently entered number on screen
+            configPRINTF( ( "we in display new num\r\n" ) );
+            display_enter_pin_screen();
             xSemaphoreGive(xCollectPinSem);
         }
-        if (xSemaphoreTake(xBoxErrorScreenSem, portMAX_DELAY))
+        else if (xSemaphoreTake(xBoxErrorScreenSem, pdMS_TO_TICKS(500UL)))
         {
+            configPRINTF( ( "we in box error\r\n" ) );
             display_error_screen();
+            current_pin = EMPTY_PIN;
             vTaskDelay(pdMS_TO_TICKS(3000UL));
             display_enter_pin_screen();
             xSemaphoreGive(xCollectPinSem);
         }
-        if (xSemaphoreTake(xBoxUnlockedScreenSem, portMAX_DELAY))
+        else if (xSemaphoreTake(xBoxUnlockedScreenSem, pdMS_TO_TICKS(500UL)))
         {
+            configPRINTF( ( "we in box unlocced\r\n" ) );
             display_box_unlocked_screen();
-            vTaskDelay(pdMS_TO_TICKS(1000UL));
+            current_pin = EMPTY_PIN;
+            vTaskDelay(pdMS_TO_TICKS(3000UL));
+            display_enter_pin_screen();
             xSemaphoreGive(xCollectPinSem);
         }
-        vTaskDelay(pdMS_TO_TICKS(1000UL));
     }
 }
 static void vCheckPinTask(void *pvParameters)
@@ -1031,7 +1045,7 @@ static void vCheckPinTask(void *pvParameters)
             }
             xSemaphoreGive(xPinCheckedSem);
         }
-        vTaskDelay(pdMS_TO_TICKS(1000UL));
+        vTaskDelay(pdMS_TO_TICKS(300UL));
     }
 }
 
@@ -1055,16 +1069,18 @@ void vLCDtask (void * pvParameters ) {
         while (1);
     }
 
-    while(1){
-        //setting contrast
-        lcdContrast(10);
+    display_enter_pin_screen();
 
-//        lcdSpecialFunction(CONST_SPL_FUNC_CPU_RESET);//Hard Reset the LCD
-        display_error_screen();
-        vTaskDelay(5000);
-        display_box_unlocked_screen();
-        vTaskDelay(5000);
-        display_enter_pin_screen();
+    while(1){
+//        //setting contrast
+//        lcdContrast(10);
+//
+////        lcdSpecialFunction(CONST_SPL_FUNC_CPU_RESET);//Hard Reset the LCD
+//        display_error_screen();
+//        vTaskDelay(5000);
+//        display_box_unlocked_screen();
+//        vTaskDelay(5000);
+//        display_enter_pin_screen();
         vTaskDelay(10000);
     }
 
@@ -1125,13 +1141,13 @@ void vStartMQTTEchoDemo( void )
     end examples*/
     xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
     xTaskCreate(vKeypadTask, "Keypad", 512, NULL, 2, NULL);
-    // xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
+    xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
     xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
 
 
     xTaskCreate(vReadButtonPressed, "Task for Reading Button Pressed.", 512, NULL, 2, NULL);
    // xTaskCreate(vTestTask, "Task for Debugging", 512, NULL, 2, NULL);
-//    xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
+    xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
 
 
     /*Package Protect: END FreeRTOS Creating Tasks*/
@@ -1141,11 +1157,11 @@ void vStartMQTTEchoDemo( void )
     /* Create the task that publishes messages to the MQTT broker every five
      * seconds.  This task, in turn, creates the task that echoes data received
      * from the broker back to the broker. */
-//    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
-//                          "MQTTEcho",                          /* The name to assign to the task being created. */
-//                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
-//                          NULL,                                /* The task parameter is not being used. */
-//                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
-//                          NULL );                              /* Not storing the task's handle. */
+    ( void ) xTaskCreate( prvMQTTConnectAndPublishTask,        /* The function that implements the demo task. */
+                          "MQTTEcho",                          /* The name to assign to the task being created. */
+                          democonfigMQTT_ECHO_TASK_STACK_SIZE, /* The size, in WORDS (not bytes), of the stack to allocate for the task being created. */
+                          NULL,                                /* The task parameter is not being used. */
+                          democonfigMQTT_ECHO_TASK_PRIORITY,   /* The priority at which the task being created will run. */
+                          NULL );                              /* Not storing the task's handle. */
 }
 /*-----------------------------------------------------------*/
