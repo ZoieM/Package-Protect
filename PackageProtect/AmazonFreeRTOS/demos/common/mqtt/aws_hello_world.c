@@ -1161,18 +1161,12 @@ void vStartMQTTEchoDemo( void )
     configPRINTF( ( "Starting Tasks for Package Protect\r\n" ) );
 
     GPIO_init();
-    /*begin examples:
-    xTaskCreate(vOpenBox, "Open Box", 512, NULL, 2, NULL); //Task for controlling the lock: Takes xBoxOpenSem whenever given. When xBoxOpenSem is taken, unlock the box.
-    xTaskCreate(vKeypadCheck, "Keypad", 512, NULL, 2, NULL); //Task for checking the keypad: When correct pin is entered, gives xBoxOpenSem.
-    end examples*/
+    // xTaskCreate(vTestTask, "Task for Debugging", 512, NULL, 2, NULL);
     xTaskCreate(vOpenBoxTask, "OpenBox", 512, NULL, 2, NULL);
     xTaskCreate(vKeypadTask, "Keypad", 512, NULL, 2, NULL);
     xTaskCreate(vScreenTask, "Screen", 512, NULL, 2, NULL);
     xTaskCreate(vCheckPinTask, "CheckPin", 512, NULL, 2, NULL);
-
-
     xTaskCreate(vReadButtonPressed, "Task for Reading Button Pressed.", 512, NULL, 2, NULL);
-   // xTaskCreate(vTestTask, "Task for Debugging", 512, NULL, 2, NULL);
     xTaskCreate(vLCDtask, "Task for LCD", 512, NULL, 2, NULL);
 
 
