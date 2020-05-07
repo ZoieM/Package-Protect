@@ -101,6 +101,8 @@ SemaphoreHandle_t xBoxUnlockedScreenSem;
 SemaphoreHandle_t xBoxErrorScreenSem;
 SemaphoreHandle_t xDisplayNewNumberSem;
 SemaphoreHandle_t xButtonPressedSem;
+SemaphoreHandle_t xSendTextSem;
+SemaphoreHandle_t xTextSentSem;
 /*Package Protect: END Global Variables*/
 /*-----------------------------------------------------------*/
 /*-----------------------------------------------------------*/
@@ -310,7 +312,7 @@ void display_enter_pin_screen()
  * @brief Dimension of the character array buffers used to hold data (strings in
  * this case) that is published to and received from the MQTT broker (in the cloud).
  */
-#define echoMAX_DATA_LENGTH      20
+#define echoMAX_DATA_LENGTH      30
 
 /**
  * @brief A block time of 0 simply means "don't block".
@@ -453,7 +455,10 @@ static void prvPublishNextMessage( BaseType_t xMessageNumber )
     /* Create the message that will be published, which is of the form "Hello World n"
      * where n is a monotonically increasing number. Note that snprintf appends
      * terminating null character to the cDataBuffer. */
-    ( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "Hello World %d", ( int ) xMessageNumber );
+    //( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "Hello World %d", ( int ) xMessageNumber );
+
+    //PACKAGE PROTECT: Change MQTT message to be "You've received a package!"
+    ( void ) snprintf( cDataBuffer, echoMAX_DATA_LENGTH, "You've received a package!");
 
     /* Setup the publish parameters. */
     memset( &( xPublishParameters ), 0x00, sizeof( xPublishParameters ) );
@@ -523,19 +528,19 @@ static void prvMessageEchoingTask( void * pvParameters )
             strcat( cDataBuffer, echoACK_STRING );
             xPublishParameters.ulDataLength = ( uint32_t ) strlen( cDataBuffer );
 
-            /* Publish the ACK message. */
-            xReturned = MQTT_AGENT_Publish( xMQTTHandle,
-                                            &xPublishParameters,
-                                            democonfigMQTT_TIMEOUT );
-
-            if( xReturned == eMQTTAgentSuccess )
-            {
-                configPRINTF( ( "Message returned with ACK: '%s'\r\n", cDataBuffer ) );
-            }
-            else
-            {
-                configPRINTF( ( "ERROR:  Could not return message with ACK: '%s'\r\n", cDataBuffer ) );
-            }
+//            /* Publish the ACK message. */
+//            xReturned = MQTT_AGENT_Publish( xMQTTHandle,
+//                                            &xPublishParameters,
+//                                            democonfigMQTT_TIMEOUT );
+//
+//            if( xReturned == eMQTTAgentSuccess )
+//            {
+//                configPRINTF( ( "Message returned with ACK: '%s'\r\n", cDataBuffer ) );
+//            }
+//            else
+//            {
+//                configPRINTF( ( "ERROR:  Could not return message with ACK: '%s'\r\n", cDataBuffer ) );
+//            }
         }
         else
         {
@@ -683,15 +688,28 @@ static void prvMQTTConnectAndPublishTask( void * pvParameters )
 
     if( xReturned == pdPASS )
     {
-        /* MQTT client is now connected to a broker.  Publish a message
-         * every five seconds until a minute has elapsed. */
-        for( xX = 0; xX < xIterationsInAMinute; xX++ )
+//        /* MQTT client is now connected to a broker.  Publish a message
+//         * every five seconds until a minute has elapsed. */
+//        for( xX = 0; xX < xIterationsInAMinute; xX++ )
+//        {
+//            prvPublishNextMessage( xX );
+//
+//            /* Five seconds delay between publishes. */
+//            vTaskDelay( xFiveSeconds );
+//        }
+        //PACKAGE PROTECT: Add code here to only send message when mailbox is opened.
+        while(1)
         {
-            prvPublishNextMessage( xX );
-
-            /* Five seconds delay between publishes. */
-            vTaskDelay( xFiveSeconds );
+            if(xSemaphoreTake(xSendTextSem, portMAX_DELAY))
+            {
+                xSemaphoreGive(xTextSentSem);
+                vTaskDelay( xFiveSeconds );
+                vTaskDelay( xFiveSeconds );
+                prvPublishNextMessage( xX );
+            }
+            vTaskDelay(pdMS_TO_TICKS(100UL));
         }
+
     }
 
     /* Disconnect the client. */
@@ -748,13 +766,22 @@ static uint16_t remove_one_from_pin(uint16_t pin)
 /*Package Protect: BEGIN FreeRTOS Task Definitions*/
 void vOpenBoxTask(void *pvParameters)
 {
+    GPIO_write(CC3220SF_LAUNCHXL_GPIO_LOCK, 0);
     while (1)
     {
         if (xSemaphoreTake(xBoxOpenSem, portMAX_DELAY))
         {
             configPRINTF( ( "Unlocking box...\r\n" ) );
-            // insert driver here to unlock
+            GPIO_write(CC3220SF_LAUNCHXL_GPIO_LOCK, 1);
+            vTaskDelay(pdMS_TO_TICKS(5000UL));
+            GPIO_write(CC3220SF_LAUNCHXL_GPIO_LOCK, 0);
             configPRINTF( ( "Box Unlocked.\r\n" ) );
+            // send semaphore to send text soon after, and wait until we hear back
+            xSemaphoreGive(xSendTextSem);
+            while(!xSemaphoreTake(xTextSentSem, portMAX_DELAY))
+            {
+                vTaskDelay(pdMS_TO_TICKS(1));
+            }
             xSemaphoreGive(xBoxDoneSem);
         }
         vTaskDelay(pdMS_TO_TICKS(100UL));
@@ -785,7 +812,7 @@ void vReadButtonPressed (void * pvParameters ) {
             sendSemaphore = false;
         }
 
-        vTaskDelay(pdMS_TO_TICKS( 500UL ));   //Change this to be how often we want to poll for buttons
+        vTaskDelay(pdMS_TO_TICKS( 200UL ));   //Change this to be how often we want to poll for buttons
         //if a button is pressed //if (read row 2 | read row 3 |read row 4 | read row 5)
         if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4) | GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5))
         {
@@ -812,7 +839,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
                     LastButtonPressed = 1;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -820,7 +847,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
                     LastButtonPressed = 4;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -828,7 +855,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
                     LastButtonPressed = 7;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -840,7 +867,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
                     LastButtonPressed = 2;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -849,7 +876,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
                     LastButtonPressed = 5;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -857,7 +884,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
                     LastButtonPressed = 8;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -865,7 +892,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
                     LastButtonPressed = 0;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -878,7 +905,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW2)){
                     LastButtonPressed = 3;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -886,7 +913,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW3)){
                     LastButtonPressed = 6;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -894,7 +921,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
                     LastButtonPressed = 9;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was %d\r\n ", LastButtonPressed ) );
 
                     break;
                 }
@@ -906,7 +933,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW4)){
                     LastButtonPressed = DeleteButton;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was Delete\r\n ") );
 
                     break;
                 }
@@ -914,7 +941,7 @@ void vReadButtonPressed (void * pvParameters ) {
                 if(GPIO_read(CC3220SF_LAUNCHXL_GPIO_ROW5)){
                     LastButtonPressed = EnterButton;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "button found was Enter\r\n ") );
 
                     break;
                 }
@@ -923,7 +950,7 @@ void vReadButtonPressed (void * pvParameters ) {
                     //LastButtonPressed =  UnknownButton (-1) and buttonFound = true and sendSemaphore = false and break
                     LastButtonPressed = UnknownButton;
                     buttonFound = true;
-                    configPRINTF( ( "buttonFound was %d\r\n ", LastButtonPressed ) );
+                    configPRINTF( ( "Unknown button was found (%d)\r\n ", LastButtonPressed ) );
 
                     sendSemaphore = false;
                     break;
@@ -949,10 +976,10 @@ static void vKeypadTask(void *pvParameters)
 
         if (xSemaphoreTake(xButtonPressedSem, portMAX_DELAY) == pdTRUE)
         {
-            configPRINTF( ( "current pin is :0  lol haha-> %d\r\n ", current_pin ) );
+            configPRINTF( ( "current pin: %d\r\n ", current_pin ) );
             if (LastButtonPressed <= 9)
             {
-                configPRINTF( ( "i am kepad task the button pressed was  %d\r\n ", LastButtonPressed ) );
+                configPRINTF( ( "button pressed: %d\r\n ", LastButtonPressed ) );
                 insert_into_pin(current_pin, LastButtonPressed);
                 /*
                  * If it is a number and we have less than 4, put the value in
@@ -960,52 +987,49 @@ static void vKeypadTask(void *pvParameters)
                  * update count, tell screen to type it). While we have 4 numbers,
                  * ignore any future numbers pressed.
                 */
-                configPRINTF( ( "finished inserting into pin\r\n" ) );
+                configPRINTF( ( "updated pin\r\n" ) );
                xSemaphoreGive(xDisplayNewNumberSem);
             }
             if (LastButtonPressed == DeleteButton)
             {
-                configPRINTF( ( "i am kepad task you pressed delt %d\r\n ", LastButtonPressed ) );
+                configPRINTF( ( "button pressed: delete\r\n ", LastButtonPressed ) );
                 current_pin = remove_one_from_pin(current_pin);
                 xSemaphoreGive(xDisplayNewNumberSem);
             }
             if (LastButtonPressed == EnterButton)
             {
-                configPRINTF( ( "i am kepad task you pressed entr  %d\r\n ", LastButtonPressed ) );
+                configPRINTF( ( "button pressed: enter\r\n ", LastButtonPressed ) );
                 xSemaphoreGive(xPinEnteredSem);
                 xSemaphoreTake(xPinCheckedSem, portMAX_DELAY);
                 if(compare_pin(saved_pin, current_pin))
                 {
-                    configPRINTF( ( "it was right woooooo \r\n") );
+                    configPRINTF( ( "Correct Pin Entered. \r\n") );
                     xSemaphoreGive(xBoxUnlockedScreenSem);
                 }
                 else
                 {
-                    configPRINTF( ( "nima \r\n") );
+                    configPRINTF( ( "Incorrect Pin Entered. \r\n") );
                     xSemaphoreGive(xBoxErrorScreenSem);
                 }
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(300UL));
+        vTaskDelay(pdMS_TO_TICKS(150UL));
     }
 }
 static void vScreenTask(void *pvParameters)
 {
-    configPRINTF( ( "Entering screentask\r\n" ) );
-//    configPRINTF( ( "Giving xcollectpinsem\r\n" ) );
     xSemaphoreGive(xCollectPinSem);
     while (1)
     {
-        configPRINTF( ( "screentask is waiting...\r\n" ) );
-        if (xSemaphoreTake(xDisplayNewNumberSem, pdMS_TO_TICKS(300UL)))
+        if (xSemaphoreTake(xDisplayNewNumberSem, pdMS_TO_TICKS(70UL)))
         {
-            configPRINTF( ( "we in display new num\r\n" ) );
+            configPRINTF( ( "Displaying new number...\r\n" ) );
             display_enter_pin_screen();
             xSemaphoreGive(xCollectPinSem);
         }
         else if (xSemaphoreTake(xBoxErrorScreenSem, pdMS_TO_TICKS(500UL)))
         {
-            configPRINTF( ( "we in box error\r\n" ) );
+            configPRINTF( ( "Displaying incorrect pin...\r\n" ) );
             display_error_screen();
             current_pin = EMPTY_PIN;
             vTaskDelay(pdMS_TO_TICKS(3000UL));
@@ -1014,7 +1038,7 @@ static void vScreenTask(void *pvParameters)
         }
         else if (xSemaphoreTake(xBoxUnlockedScreenSem, pdMS_TO_TICKS(500UL)))
         {
-            configPRINTF( ( "we in box unlocced\r\n" ) );
+            configPRINTF( ( "Displaying box unlocked...\r\n" ) );
             display_box_unlocked_screen();
             current_pin = EMPTY_PIN;
             vTaskDelay(pdMS_TO_TICKS(3000UL));
@@ -1031,12 +1055,12 @@ static void vCheckPinTask(void *pvParameters)
             if (compare_pin(current_pin, saved_pin))
             {
                 correct_pin_entered = 1;
-                configPRINTF( ( "The pin was correct!" ) );
+                configPRINTF( ( "The pin was correct!\r\n" ) );
             }
             else
             {
                 correct_pin_entered = 0;
-                configPRINTF( ( "The pin was incorrect!" ) );
+                configPRINTF( ( "The pin was incorrect!\r\n" ) );
             }
             if (correct_pin_entered)
             {
@@ -1111,6 +1135,8 @@ void vStartMQTTEchoDemo( void )
     xBoxErrorScreenSem = xSemaphoreCreateBinary();
     xDisplayNewNumberSem = xSemaphoreCreateBinary();
     xButtonPressedSem = xSemaphoreCreateBinary();
+    xSendTextSem = xSemaphoreCreateBinary();
+    xTextSentSem = xSemaphoreCreateBinary();
     /*Package Protect: END Creating Semaphores*/
 
     /*Package Protect: Initialize pin queue*/
