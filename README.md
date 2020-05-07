@@ -21,11 +21,8 @@ For more information about these components, refer to the following documentatio
 ### Repository Organization
 This repository is comprised of three distinct versions of the AmazonFreeRTOS project:
 
-+ **HelloWorld**: Clean slate for IDE configuration and understanding (and a backup/reference in a disasterous case production code is irreparably broken)
-+ **OldReferenceCode**: Archive of previous project work, primarily relevant for writing task and configuring GPIO pins.
-+ **PackageProtect**: Production code folder. This is where we should write our drivers.
-
-The **AWS** folder contains content relevant to configuring AWS services.
++ **PackageProtect**: Final production code folder. This is what we used in the demo.
++ **Older Code**: Older files, not used in the demo.
 
 ### Project Architecture
 [This commit comparison](https://github.com/ZoieM/Package-Protect/compare/2d71048..57ad8ff) demonstrates the key files in this project.
