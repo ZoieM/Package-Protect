@@ -79,8 +79,8 @@ If you have already followed the [HelloWorld Instructions](https://github.com/Zo
    1. If you want to monitor console output:
       1. Open PuTTY.
       1. Double-click `Package Protect`. 
-   1. If you want to monitor the MQTT messages:
-      1. Open the [AWS MQTT Client](https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/test) (username: `zoiemacdougall@gmail.com` password: `PackageProtect2020`)
+   1. If you want to monitor the MQTT messages: (**NOTE: THIS REQUIRES AN AWS ACCOUNT WITH PERMISSION TO VIEW THIS DEVICE**)
+      1. Open the [AWS MQTT Client](https://us-west-2.console.aws.amazon.com/iot/home?region=us-west-2#/test)
       1. Under *Subscription topic*, enter `freertos/demos/echo` and click *Subscribe*.
    1. If you are using your phone as a hotspot, open that screen now.
    1. Click *Resume*.
